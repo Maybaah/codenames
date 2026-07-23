@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <title>Codenames Online Free: English and Russian Word Decks | Maybaah's Arcade</title>
+  <meta name="description" content="Play Codenames free in your browser. Create a lobby, share the link, split into two teams and give one word clues. English and Russian decks, no ads, no sign-up." />
+  <meta name="author" content="Artem Kovtoniuk" />
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
+  <link rel="canonical" href="https://maybaah.github.io/codenames/" />
+  <link rel="alternate" hreflang="en" href="https://maybaah.github.io/codenames/" />
+  <link rel="alternate" hreflang="ru" href="https://maybaah.github.io/codenames/?lang=ru" />
+  <link rel="alternate" hreflang="x-default" href="https://maybaah.github.io/codenames/" />
+  <meta name="theme-color" content="#0a0a0a" />
+
+  <!-- Open Graph -->
+  <meta property="og:site_name" content="maybaah.github.io" />
+  <meta property="og:title" content="Codenames | Two Teams, One Word Clues | Maybaah's Arcade" />
+  <meta property="og:description" content="Create a lobby, share the link, split into two teams. English and Russian decks. Free, no ads, no sign-up." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://maybaah.github.io/codenames/" />
+  <meta property="og:image" content="https://maybaah.github.io/assets/og.png" />
+
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Codenames | Two Teams, One Word Clues | Maybaah's Arcade" />
+  <meta name="twitter:description" content="Create a lobby, share the link, split into two teams. English and Russian decks. Free, no ads, no sign-up." />
+  <meta name="twitter:image" content="https://maybaah.github.io/assets/og.png" />
+
+  <!-- Icons -->
+  <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="/assets/site.css" />
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "VideoGame",
+    "name": "Codenames | Maybaah's Arcade",
+    "url": "https://maybaah.github.io/codenames/",
+    "description": "Free browser Codenames: create a lobby, share the link, split into two teams and give one word clues. English and Russian word decks, refereed by a server that keeps the key from the operatives.",
+    "genre": "Party word game",
+    "gamePlatform": "Web browser",
+    "operatingSystem": "Any",
+    "applicationCategory": "Game",
+    "playMode": ["MultiPlayer", "CoOp"],
+    "inLanguage": ["en", "ru"],
+    "numberOfPlayers": { "@type": "QuantitativeValue", "minValue": 4, "maxValue": 24 },
+    "author": { "@type": "Person", "name": "Artem Kovtoniuk" },
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://maybaah.github.io/" },
+      { "@type": "ListItem", "position": 2, "name": "Arcade", "item": "https://maybaah.github.io/arcade/" },
+      { "@type": "ListItem", "position": 3, "name": "Codenames", "item": "https://maybaah.github.io/codenames/" }
+    ]
+  }
+  </script>
+
+  <style>
+    :root {
+      --red: #e05a5a;
+      --blue: #5b8def;
+      --tan: #8b8069;
+    }
+
+    /* half this page is hidden at any moment and most of it carries a display
+       of its own, which outranks the browser's rule for the attribute */
+    [hidden] { display: none !important; }
+
+    .game-wrap { max-width: 760px; margin-inline: auto; padding-inline: 24px; }
+    .game-head {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; flex-wrap: wrap; margin-top: 40px;
+    }
+
+    .lobby {
+      background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 16px; margin-top: 16px;
+    }
+    .lobby-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .lobby input {
+      background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 8px;
+      color: var(--text-primary); font-family: var(--font-mono); font-size: 15px;
+      padding: 7px 12px;
+    }
+    #join-code { letter-spacing: 0.24em; text-transform: uppercase; width: 110px; }
+    #name-input { width: 150px; letter-spacing: 0.04em; font-size: 13px; }
+    .lobby .hint {
+      font-family: var(--font-mono); font-size: 11px; color: var(--text-muted);
+      margin-top: 10px; line-height: 1.6;
+    }
+    .lobby label {
+      font-family: var(--font-mono); font-size: 10px; text-transform: uppercase;
+      letter-spacing: 0.14em; color: var(--text-muted);
+    }
+    .share { display: flex; gap: 8px; align-items: center; margin-top: 12px; flex-wrap: wrap; }
+    .share code {
+      font-family: var(--font-mono); font-size: 12px; color: var(--text-secondary);
+      background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: 6px;
+      padding: 6px 10px; overflow-wrap: anywhere;
+    }
+
+    /* ── teams ── */
+    .teams { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
+    .team {
+      background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 14px;
+    }
+    .team.red { border-color: rgba(224, 90, 90, 0.4); }
+    .team.blue { border-color: rgba(91, 141, 239, 0.4); }
+    .team h3 {
+      font-family: var(--font-mono); font-size: 11px; text-transform: uppercase;
+      letter-spacing: 0.16em; display: flex; justify-content: space-between; gap: 8px;
+    }
+    .team.red h3 { color: var(--red); }
+    .team.blue h3 { color: var(--blue); }
+    .team .slot {
+      font-family: var(--font-mono); font-size: 11px; color: var(--text-muted);
+      margin-top: 10px; text-transform: uppercase; letter-spacing: 0.12em;
+    }
+    .team ul { list-style: none; margin: 4px 0 0; padding: 0; }
+    .team li {
+      font-size: 13px; color: var(--text-secondary); padding: 2px 0;
+      display: flex; align-items: center; gap: 7px;
+    }
+    .team li.mine { color: var(--text-primary); }
+    .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-muted); flex: none; }
+    li.here .dot { background: var(--success); }
+    .crown { font-family: var(--font-mono); font-size: 9px; color: var(--warning); letter-spacing: 0.1em; }
+    .team .actions { display: flex; gap: 6px; margin-top: 12px; flex-wrap: wrap; }
+    .bench { margin-top: 12px; }
+    .bench .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+    /* ── scoreboard ── */
+    .score {
+      display: flex; align-items: center; justify-content: center; gap: 14px;
+      margin-top: 22px; font-family: var(--font-mono);
+    }
+    .score .n { font-size: 26px; font-weight: 600; line-height: 1; }
+    .score .n.red { color: var(--red); }
+    .score .n.blue { color: var(--blue); }
+    .score .who {
+      font-size: 11px; text-transform: uppercase; letter-spacing: 0.14em;
+      color: var(--text-secondary); text-align: center; min-width: 190px;
+    }
+
+    /* ── board ── */
+    #board {
+      display: grid; grid-template-columns: repeat(5, 1fr); gap: 7px;
+      margin-top: 18px;
+    }
+    .word {
+      aspect-ratio: 1.35; display: flex; align-items: center; justify-content: center;
+      text-align: center; padding: 4px 3px;
+      background: var(--bg-surface); border: 1px solid var(--border); border-radius: 8px;
+      font-family: var(--font-mono); font-size: clamp(9px, 1.85vw, 12px); font-weight: 500;
+      letter-spacing: 0.04em; line-height: 1.15; color: var(--text-primary);
+      overflow-wrap: anywhere; cursor: default;
+      transition: background 120ms ease, border-color 120ms ease, opacity 120ms ease;
+    }
+    .word.live { cursor: pointer; }
+    .word.live:hover { background: var(--bg-elevated); border-color: var(--border-focus); }
+    .word.peek-red { border-color: rgba(224, 90, 90, 0.55); background: rgba(224, 90, 90, 0.07); }
+    .word.peek-blue { border-color: rgba(91, 141, 239, 0.55); background: rgba(91, 141, 239, 0.07); }
+    .word.peek-neutral { border-color: rgba(139, 128, 105, 0.5); background: rgba(139, 128, 105, 0.07); }
+    .word.peek-assassin { border-color: #555; background: #000; }
+    .word.up { color: #0a0a0a; font-weight: 600; }
+    .word.up.red { background: var(--red); border-color: var(--red); }
+    .word.up.blue { background: var(--blue); border-color: var(--blue); }
+    .word.up.neutral { background: var(--tan); border-color: var(--tan); }
+    .word.up.assassin { background: #000; border-color: #444; color: var(--text-secondary); text-decoration: line-through; }
+    .word.up { opacity: 0.85; }
+    .word.fresh { animation: flip 160ms ease; }
+    @keyframes flip { from { transform: scale(0.9); opacity: 0.4; } to { transform: scale(1); opacity: 0.85; } }
+
+    /* ── clue bar ── */
+    .clue-bar {
+      background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 14px 16px; margin-top: 18px;
+    }
+    .clue-bar .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .clue-bar input, .clue-bar select {
+      background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 8px;
+      color: var(--text-primary); font-family: var(--font-mono); font-size: 15px; padding: 7px 12px;
+    }
+    #clue-word { width: 190px; }
+    #clue-count { width: 72px; }
+    .clue-now {
+      font-family: var(--font-mono); font-size: 20px; font-weight: 600;
+      letter-spacing: 0.06em; text-transform: uppercase;
+    }
+    .clue-now .count { color: var(--warning); }
+    .clue-meta { font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); margin-top: 6px; }
+    .warn { font-family: var(--font-mono); font-size: 11px; color: var(--warning); margin-top: 8px; line-height: 1.6; }
+    .penalty { font-family: var(--font-mono); font-size: 11px; color: var(--red); margin-top: 8px; line-height: 1.6; }
+
+    .statusline {
+      margin-top: 16px; font-family: var(--font-mono); font-size: 12px;
+      color: var(--text-secondary); min-height: 18px;
+    }
+    .toolbar { display: flex; gap: 8px; margin-top: 18px; flex-wrap: wrap; }
+
+    /* ── log ── */
+    .log {
+      margin-top: 24px; border-top: 1px solid var(--border-subtle); padding-top: 14px;
+      font-family: var(--font-mono); font-size: 11px; color: var(--text-muted);
+      max-height: 190px; overflow-y: auto; line-height: 1.9;
+    }
+    .log b { font-weight: 500; }
+    .log .red { color: var(--red); }
+    .log .blue { color: var(--blue); }
+    .log .miss { color: var(--tan); }
+    .log .kill { color: var(--danger); }
+
+    .rules { margin-top: 40px; font-size: 13px; color: var(--text-muted); line-height: 1.75; }
+    .rules h2 { font-size: 15px; font-weight: 500; color: var(--text-primary); margin-bottom: 10px; }
+    .rules h3 { font-size: 13px; color: var(--text-secondary); margin: 18px 0 6px; }
+    .rules p { margin-bottom: 10px; }
+    .rules ul { margin: 0 0 10px; padding-left: 18px; }
+    .rules li { margin-bottom: 4px; }
+
+    @media (max-width: 560px) {
+      /* the longest words in either deck are ten letters, so a narrow card is
+         taller and drops the tracking rather than shrinking the type further */
+      .word { aspect-ratio: 1.1; letter-spacing: 0; padding: 3px 2px; }
+      #board { gap: 5px; }
+      .teams { grid-template-columns: 1fr; }
+      .score .who { min-width: 0; }
+      #clue-word { width: 130px; }
+    }
+    @media (prefers-reduced-motion: reduce) { .word.fresh { animation: none; } }
+  </style>
+</head>
+
+<body>
+<nav class="site-nav" aria-label="Main">
+  <div class="container">
+    <a class="wordmark" href="/">maybaah<span class="tld">.github.io</span></a>
+    <div class="nav-links">
+      <a href="/arcade/" data-i18n="nav.arcade">← Arcade</a>
+      <a href="/leaderboard/" data-i18n="nav.board">Leaderboard</a>
+    </div>
+  </div>
+</nav>
+
+<main>
+  <div class="game-wrap">
+    <div class="game-head">
+      <div>
+        <p class="eyebrow">Cabinet 09</p>
+        <h1 style="font-size: 28px; margin-top: 6px;">Codenames</h1>
+      </div>
+      <div class="sub-pills" style="margin-bottom: 0;" id="lang-switch" role="group" aria-label="Interface language">
+        <button class="pill" data-lang="en" aria-pressed="true">English</button>
+        <button class="pill" data-lang="ru" aria-pressed="false">Русский</button>
+      </div>
+    </div>
+
+    <div class="lobby" id="panel-room">
+      <div class="lobby-row">
+        <button class="btn btn-primary btn-sm" id="btn-create" data-i18n="room.create">Create lobby</button>
+        <span style="font-family: var(--font-mono); font-size: 11px; color: var(--text-muted);" data-i18n="room.or">or</span>
+        <input id="join-code" maxlength="4" placeholder="CODE" autocomplete="off" spellcheck="false" aria-label="Room code" />
+        <button class="btn btn-secondary btn-sm" id="btn-join" data-i18n="room.join">Join</button>
+        <span style="flex: 1;"></span>
+        <label for="name-input" data-i18n="room.you">you</label>
+        <input id="name-input" maxlength="16" autocomplete="off" spellcheck="false" aria-label="Your name" />
+      </div>
+      <div class="share" id="share" hidden>
+        <code id="share-link"></code>
+        <button class="btn btn-secondary btn-sm" id="btn-copy" data-i18n="room.copy">Copy link</button>
+        <button class="btn btn-secondary btn-sm" id="btn-leave" data-i18n="room.leave">Leave</button>
+      </div>
+      <div class="lobby-row" id="deck-row" style="margin-top: 12px;" hidden>
+        <label data-i18n="room.deck">deck</label>
+        <div class="sub-pills" style="margin-bottom: 0;" id="deck-pills" role="group" aria-label="Deck language">
+          <button class="pill" data-deck="en" aria-pressed="true">English words</button>
+          <button class="pill" data-deck="ru" aria-pressed="false">Русские слова</button>
+        </div>
+      </div>
+      <p class="hint" id="room-hint" data-i18n="room.hint">Create a lobby and send the link. Four players at least: a spymaster and an operative on each side. The key lives on the server and only the two spymasters are ever sent it.</p>
+    </div>
+
+    <div class="teams" id="teams" hidden>
+      <div class="team red">
+        <h3><span data-i18n="team.red">Red</span> <span id="count-red"></span></h3>
+        <p class="slot" data-i18n="role.spymaster">spymaster</p>
+        <ul id="red-spymaster"></ul>
+        <p class="slot" data-i18n="role.operatives">operatives</p>
+        <ul id="red-operatives"></ul>
+        <div class="actions">
+          <button class="btn btn-secondary btn-sm" data-seat="red:spymaster" data-i18n="seat.spymaster">Be spymaster</button>
+          <button class="btn btn-secondary btn-sm" data-seat="red:operative" data-i18n="seat.operative">Join team</button>
+        </div>
+      </div>
+      <div class="team blue">
+        <h3><span data-i18n="team.blue">Blue</span> <span id="count-blue"></span></h3>
+        <p class="slot" data-i18n="role.spymaster">spymaster</p>
+        <ul id="blue-spymaster"></ul>
+        <p class="slot" data-i18n="role.operatives">operatives</p>
+        <ul id="blue-operatives"></ul>
+        <div class="actions">
+          <button class="btn btn-secondary btn-sm" data-seat="blue:spymaster" data-i18n="seat.spymaster">Be spymaster</button>
+          <button class="btn btn-secondary btn-sm" data-seat="blue:operative" data-i18n="seat.operative">Join team</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="lobby bench" id="bench" hidden>
+      <div class="row">
+        <p class="slot" style="margin: 0;" data-i18n="role.watching">watching</p>
+        <ul id="spectators" style="list-style: none; margin: 0; padding: 0; display: flex; gap: 12px; flex-wrap: wrap;"></ul>
+        <span style="flex: 1;"></span>
+        <button class="btn btn-secondary btn-sm" data-seat="none" data-i18n="seat.watch">Sit out</button>
+        <button class="btn btn-primary btn-sm" id="btn-start" data-i18n="seat.start">Start game</button>
+      </div>
+      <p class="hint" id="bench-hint"></p>
+    </div>
+
+    <div class="score" id="score" hidden>
+      <span class="n red" id="left-red">9</span>
+      <span class="who" id="turn-label"></span>
+      <span class="n blue" id="left-blue">8</span>
+    </div>
+
+    <div id="board" role="grid" aria-label="Codenames board"></div>
+
+    <div class="clue-bar" id="clue-bar" hidden>
+      <div class="row" id="clue-form" hidden>
+        <input id="clue-word" maxlength="24" autocomplete="off" spellcheck="false" aria-label="Clue word" />
+        <select id="clue-count" aria-label="Clue number">
+          <option value="0">0 / ∞</option>
+          <option value="1" selected>1</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+          <option value="5">5</option>
+          <option value="6">6</option>
+          <option value="7">7</option>
+          <option value="8">8</option>
+          <option value="9">9</option>
+        </select>
+        <button class="btn btn-primary btn-sm" id="btn-clue" data-i18n="clue.give">Give clue</button>
+      </div>
+      <div id="clue-view" hidden>
+        <p class="clue-now" id="clue-text"></p>
+        <p class="clue-meta" id="clue-meta"></p>
+      </div>
+      <div class="row" id="clue-actions" style="margin-top: 10px;">
+        <button class="btn btn-secondary btn-sm" id="btn-pass" data-i18n="clue.pass" hidden>Pass</button>
+        <button class="btn btn-secondary btn-sm" id="btn-illegal" data-i18n="clue.illegal" hidden>Illegal clue</button>
+      </div>
+      <p class="warn" id="clue-warn" hidden></p>
+      <p class="penalty" id="penalty-note" hidden></p>
+    </div>
+
+    <p class="statusline" id="status"></p>
+
+    <div class="toolbar">
+      <button class="btn btn-secondary btn-sm" id="btn-reset" data-i18n="tool.reset" hidden>New game</button>
+      <a class="btn btn-secondary btn-sm" href="/arcade/" data-i18n="tool.arcade">Arcade</a>
+    </div>
+
+    <div class="log" id="log" hidden></div>
+
+    <section class="rules" data-rules="en">
+      <h2>How Codenames works</h2>
+      <p>Twenty five words are on the table. One of them is the assassin, seven
+        are bystanders, and the rest belong to the two teams: nine to whoever
+        starts, eight to the other side. Only the two spymasters see which is
+        which. Their job is to walk their operatives onto their own words
+        without walking them onto the assassin.</p>
+
+      <h3>The clue</h3>
+      <p>On your turn as spymaster you give one word and one number, and nothing
+        else. The word is what the cards have in common, the number is how many
+        cards you mean. Wanting to point at ELEPHANT and LION you say
+        "africa 2". You are allowed to say where the stress falls in a word if
+        somebody asks. That is the entire list of things you may say.</p>
+
+      <h3>What a clue may not be</h3>
+      <ul>
+        <li>The clue must be about what the words mean. Not their spelling, not
+          their first letters, not where they sit on the table. LEEK, LINEN and
+          LION cannot be clued as "l 3" or "three 3".</li>
+        <li>No matching endings, suffixes or prefixes unless the meaning matches
+          too. "little man" and "little mushroom" are related, they both name
+          small things; "resurrection" and "opinion" are not.</li>
+        <li>No clue that shares a root with a word still face up on the table.
+          "port" is out while SPORT is on the table, but "child" is fine for
+          GRANDCHILD, since the roots really are the same one.</li>
+        <li>Letters and numbers are allowed when they are about meaning:
+          "eight 2" for SPIDER and NUMBER is a fair clue. Using the clue number
+          itself as the clue is not: "citrus 8" for LEMON and OCTOPUS is out.</li>
+        <li>No invented words, no deliberate misspellings, no nudging with
+          capital letters. For MOON and FABLE, "APOLLOgy 2" is out.</li>
+        <li>A clue in another language must not share a root with a word on the
+          table through a direct translation.</li>
+        <li>Acronyms are allowed, and every rule above applies to what they
+          stand for as well.</li>
+        <li>The number is 0 to 9. Zero means the clue is a warning, and your
+          team may name as many words as they like.</li>
+      </ul>
+
+      <h3>Guessing</h3>
+      <p>Your team names words by clicking them. Your own colour keeps the turn
+        alive; a bystander or an enemy word ends it on the spot; the assassin
+        ends the game and you lose. You get one guess more than the number, so a
+        team clued "africa 2" may name three words, and you must name at least
+        one before you can pass. Turn over all your own words first and you win.</p>
+
+      <h3>A clue against the rules</h3>
+      <p>A machine cannot judge a root or a rhyme, so the other spymaster calls
+        it. If they do, the offending team's turn ends immediately, and the
+        spymaster who called it turns over one of their own team's words before
+        giving their next clue.</p>
+
+      <h3>Why the server deals</h3>
+      <p>The key never reaches an operative's browser. The room lives in a
+        Durable Object that owns the words, the key and whose turn it is; the
+        page sends intents and draws whatever comes back. Reading the page
+        source, the network tab or the console gets an operative exactly as far
+        as reading the back of a card: nowhere.</p>
+    </section>
+
+    <section class="rules" data-rules="ru" hidden>
+      <h2>Как играть в Кодовые имена</h2>
+      <p>На столе двадцать пять слов. Одно из них убийца, семь нейтральные, а
+        остальные принадлежат двум командам: девять той, что ходит первой,
+        восемь второй. Кто есть кто, видят только два руководителя команд. Их
+        задача провести своих игроков по своим словам и не привести к убийце.</p>
+
+      <h3>Шифр</h3>
+      <p>Руководитель команды в свой ход даёт игрокам шифрованный намёк и
+        указывает, сколько слов связаны с ним, ничего более говорить или
+        показывать нельзя. Позволяется уточнить, куда падает ударение в
+        загаданном слове. Шифр состоит из одного слова и одного числа. Например,
+        руководитель хочет намекнуть на два кодовых слова, написанные на картах
+        стола, СЛОН и ЛЕВ, и говорит: «африка 2».</p>
+
+      <h3>Чего в шифре быть не может</h3>
+      <ul>
+        <li>Шифр должен относиться к смыслу кодовых имён. Нельзя говорить об их
+          первых буквах или о геометрическом расположении карт в таблице. Слова
+          ЛУК, ЛЁН и ЛЕВ нельзя связывать шифрами «л 3» или «три 3».</li>
+        <li>Нельзя использовать слова с одинаковыми окончаниями, суффиксами и
+          приставками, если они не связаны по смыслу. «Человечек» и «грибочек»
+          связаны, они оба описывают маленькие предметы; «воскресение» и
+          «мнение» не связаны.</li>
+        <li>Нельзя использовать шифры с созвучными корнями, если они не связаны
+          по смыслу: «порт» нельзя использовать для слова СПОРТ, но «ребёнок»
+          можно использовать для слова ЖЕРЕБЁНОК. В качестве шифра нельзя
+          использовать слово однокоренное с присутствующими среди неразгаданных
+          кодовых имён.</li>
+        <li>Буквы и числа допустимы, если они касаются смысла кодовых имён,
+          например «восемь 2» о словах ПАУК и ЧИСЛО. Число в шифре нельзя
+          использовать в качестве шифра: «цитрусовые 8» недопустимо для слов
+          ЛИМОН и ОСЬМИНОГ.</li>
+        <li>Запрещено использовать несуществующие слова, делать намёки в виде
+          нарочных ошибок или изменений регистра букв: для слов ЛУНА и БАСНЯ
+          недопустимо «АПОЛЛОг 2». Запрещены и несуществующие слова, которые
+          вместе с загаданным и, возможно, дополнительными буквами образуют
+          существующее слово.</li>
+        <li>Если используется шифр не на русском языке, он не должен иметь
+          однокоренных прямых переводов со словами на столе.</li>
+        <li>Аббревиатуры использовать можно, но к их составляющим применяются те
+          же правила, что к обычным подсказкам: нельзя загадывать СССР, если на
+          столе есть карточка со словом «союз».</li>
+        <li>В качестве чисел можно использовать 0 до 9. При нуле команда может
+          называть любое количество слов.</li>
+      </ul>
+
+      <h3>Как отгадывают</h3>
+      <p>Команда называет слова, нажимая на карты. Своё слово оставляет ход за
+        командой, нейтральное или чужое сразу его заканчивает, а убийца
+        заканчивает всю игру поражением. Угадать можно на одно слово больше, чем
+        число в шифре, и хотя бы одно слово назвать придётся, прежде чем
+        передать ход. Кто первым открыл все свои слова, тот и выиграл.</p>
+
+      <h3>Наказание за неправильный шифр</h3>
+      <p>Корень и созвучие машина оценить не может, поэтому нарушение объявляет
+        руководитель другой команды. Если руководитель команды дал шифр с
+        нарушением правил, ход его команды немедленно заканчивается, и
+        руководитель команды соперников открывает одно слово своей команды,
+        прежде чем давать шифр.</p>
+
+      <h3>Почему карты раздаёт сервер</h3>
+      <p>Ключ никогда не попадает в браузер игрока. Комната живёт в Durable
+        Object, который владеет словами, ключом и очередью хода; страница только
+        отправляет намерения и рисует то, что пришло в ответ. Исходный код,
+        вкладка сети и консоль дадут игроку ровно столько же, сколько обратная
+        сторона карты, то есть ничего.</p>
+    </section>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <span>© 2026 Artem Kovtoniuk</span>
+    <div class="links">
+      <a href="/arcade/">arcade</a>
+      <a href="/leaderboard/">leaderboard</a>
+      <a href="https://github.com/Maybaah/codenames">source</a>
+    </div>
+  </div>
+</footer>
+
+<script src="/assets/arcade.js"></script>
+<script src="game.js"></script>
+</body>
+</html>

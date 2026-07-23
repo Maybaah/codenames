@@ -1,0 +1,22 @@
+name = "codenames-room"
+main = "src/index.js"
+compatibility_date = "2026-07-01"
+
+# One Durable Object per room. It deals the table, keeps the key and hands it
+# out to the two spymasters only, so the secret never sits in an operative's
+# browser waiting to be read out of memory.
+[[durable_objects.bindings]]
+name = "ROOM"
+class_name = "Room"
+
+# new_sqlite_classes, not new_classes: the SQLite-backed storage backend is what
+# makes Durable Objects available without a paid plan.
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Room"]
+
+# No database. Nothing here is ranked, so there is nothing to keep once the
+# room goes quiet and the alarm wipes it.
+
+[observability]
+enabled = true
