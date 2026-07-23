@@ -24,6 +24,8 @@ const IDLE_MS = 60 * 60 * 1000;
 const MAX_FRAME = 2048;
 const MAX_PLAYERS = 24;
 const LOG_MAX = 60;
+const CHAT_MAX = 50;
+const CHAT_TEXT_MAX = 200;
 
 const CLUE_RE = /^[\p{L}\p{N}][\p{L}\p{N}'-]*$/u;
 const NAME_STRIP = /[^\p{L}\p{N} ._-]/gu;
@@ -53,6 +55,7 @@ function freshRoom(lang) {
     host: null,
     round: 0,
     log: [],
+    chat: { red: [], blue: [] },
   };
 }
 
@@ -130,6 +133,7 @@ export class Room {
     if (!this.room) {
       this.room = (await this.state.storage.get("room")) || freshRoom("en");
     }
+    if (!this.room.chat) this.room.chat = { red: [], blue: [] };
     return this.room;
   }
 
@@ -207,11 +211,16 @@ export class Room {
       const att = ws.deserializeAttachment() || {};
       const p = att.id ? m.players[att.id] : null;
       const showKey = m.status === "over" || (p && p.role === "spymaster");
+      /* the team channel is for an operative and their teammates only: the
+         spymaster is walled off so they cannot nudge a guess, and the other
+         team never sees it */
+      const chat = p && p.role === "operative" && p.team ? m.chat[p.team] : null;
       let frame;
       try {
         frame = JSON.stringify(Object.assign({
           you: p ? { id: att.id, name: p.name, team: p.team, role: p.role } : null,
           key: showKey && m.key.length ? m.key : null,
+          chat,
         }, shared));
       } catch { continue; }
       try { ws.send(frame); } catch { /* socket already gone; webSocketClose tidies up */ }
@@ -247,6 +256,7 @@ export class Room {
       case "clue": return this.onClue(ws, msg, m, id);
       case "guess": return this.onGuess(ws, msg, m, id);
       case "pass": return this.onPass(ws, m, id);
+      case "chat": return this.onChat(ws, msg, m, id);
       case "illegal": return this.onIllegal(ws, m, id);
       case "free": return this.onFree(ws, msg, m, id);
       case "reset": return this.onReset(ws, m, id);
@@ -327,6 +337,7 @@ export class Room {
     m.status = "live";
     m.round++;
     m.log = [];
+    m.chat = { red: [], blue: [] };
     this.note(m, { t: "start", team: d.starter, lang: m.lang });
     await this.save();
     this.push();
@@ -403,6 +414,25 @@ export class Room {
     this.push();
   }
 
+  /* The team channel. Only a seated operative may post, and the frame carrying
+     it back out goes to that team's operatives alone (see push). The spymaster
+     giving the clue never sees it, which is the whole point: the clue is the
+     only thing they are allowed to say. */
+  async onChat(ws, msg, m, id) {
+    const p = m.players[id];
+    if (p.role !== "operative" || !p.team) return this.fail(ws, "only seated operatives have a team chat");
+    const raw = String(msg.text || "");
+    let text = "";
+    for (const ch of raw) { const c = ch.codePointAt(0); if (c >= 32 && c !== 127) text += ch; }
+    text = text.trim().slice(0, CHAT_TEXT_MAX);
+    if (!text) return;
+    const line = m.chat[p.team];
+    line.push({ name: p.name, text });
+    if (line.length > CHAT_MAX) line.splice(0, line.length - CHAT_MAX);
+    await this.save();
+    this.push();
+  }
+
   /* Only a human can judge a clue, so only a human calls it: the spymaster on
      the other side of the table. Their team's turn starts owing them one free
      card, which their spymaster turns over before giving a clue. */
@@ -453,6 +483,7 @@ export class Room {
     m.endReason = null;
     m.penalty = null;
     m.phase = "clue";
+    m.chat = { red: [], blue: [] };
     await this.save();
     this.push();
   }

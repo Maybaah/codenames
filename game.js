@@ -53,6 +53,10 @@
       "clue.pass": "Pass",
       "clue.illegal": "Illegal clue",
       "clue.unlimited": "any number of words",
+      "chat.title": "team chat",
+      "chat.send": "Send",
+      "chat.placeholder": "talk to your team",
+      "chat.empty": "only your team's operatives see this. the spymaster does not.",
       "tool.reset": "New game",
       "tool.arcade": "Arcade",
       "st.noroom": "create a lobby or join one with a code",
@@ -121,6 +125,10 @@
       "clue.pass": "Передать ход",
       "clue.illegal": "Шифр не по правилам",
       "clue.unlimited": "любое количество слов",
+      "chat.title": "чат команды",
+      "chat.send": "Отправить",
+      "chat.placeholder": "обсудите с командой",
+      "chat.empty": "видят только игроки вашей команды, руководитель нет",
       "tool.reset": "Новая игра",
       "tool.arcade": "Аркада",
       "st.noroom": "создайте лобби или войдите по коду",
@@ -186,6 +194,7 @@
         "there is nothing to pass on yet": "передавать пока нечего",
         "your team owes at least one guess": "нужно назвать хотя бы одно слово",
         "only a spymaster can call a clue": "объявить нарушение может только руководитель",
+        "only seated operatives have a team chat": "чат команды доступен только игрокам за столом",
         "you gave that clue": "это ваш собственный шифр",
         "there is no clue on the table": "шифра на столе нет",
         "not your card to turn": "это не ваша карта",
@@ -236,7 +245,8 @@
    "name-input", "deck-row", "deck-pills", "btn-start", "btn-reset", "clue-bar", "clue-form",
    "clue-view", "clue-text", "clue-meta", "clue-word", "clue-count", "clue-warn", "btn-pass",
    "btn-illegal", "penalty-note", "left-red", "left-blue", "turn-label", "count-red",
-   "count-blue", "bench-hint", "spectators", "room-hint"].forEach(function (id) {
+   "count-blue", "bench-hint", "spectators", "room-hint",
+   "chat-panel", "chat-log", "chat-input", "chat-send"].forEach(function (id) {
     el[id] = document.getElementById(id);
   });
 
@@ -274,6 +284,7 @@
     el["join-code"].placeholder = t("room.code");
     el["name-input"].placeholder = t("room.name");
     el["clue-word"].placeholder = t("clue.word");
+    el["chat-input"].placeholder = t("chat.placeholder");
     render();
   }
 
@@ -320,8 +331,27 @@
       el["bench-hint"].textContent = S.status === "live"
         ? t("seat.locked")
         : (S.ready ? t("seat.ready") : t("seat.waiting"));
+      renderChat();
     }
     el.status.textContent = statusText();
+  }
+
+  /* Only an operative gets a chat panel, and only their own team's; the
+     referee sends this frame's `chat` array to nobody else, so a spymaster or
+     the other side never has it to render. */
+  function renderChat() {
+    var p = me();
+    var mine = !!(roomCode && p && p.role === "operative" && S.chat);
+    el["chat-panel"].hidden = !mine;
+    el["chat-panel"].className = "chat" + (mine ? " " + p.team : "");
+    if (!mine) return;
+    var atBottom = el["chat-log"].scrollHeight - el["chat-log"].scrollTop - el["chat-log"].clientHeight < 40;
+    el["chat-log"].innerHTML = S.chat.length
+      ? S.chat.map(function (mgs) {
+          return '<div class="msg"><b>' + esc(mgs.name) + "</b> " + esc(mgs.text) + "</div>";
+        }).join("")
+      : '<p class="chat-empty">' + t("chat.empty") + "</p>";
+    if (atBottom) el["chat-log"].scrollTop = el["chat-log"].scrollHeight;
   }
 
   function turnText() {
@@ -654,6 +684,18 @@
   el["clue-word"].addEventListener("keydown", function (e) {
     if (e.key === "Enter") giveClue();
   });
+
+  el["chat-send"].addEventListener("click", sendChat);
+  el["chat-input"].addEventListener("keydown", function (e) {
+    if (e.key === "Enter") { e.preventDefault(); sendChat(); }
+  });
+
+  function sendChat() {
+    var text = el["chat-input"].value.trim();
+    if (!text) return;
+    send({ type: "chat", text: text });
+    el["chat-input"].value = "";
+  }
 
   function giveClue() {
     var word = el["clue-word"].value.trim();

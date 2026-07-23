@@ -225,6 +225,33 @@
     .log .miss { color: var(--tan); }
     .log .kill { color: var(--danger); }
 
+    /* ── team chat ── operatives only, tinted to the operative's team ── */
+    .chat {
+      margin-top: 18px; background: var(--bg-surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 12px 14px;
+    }
+    .chat.red { border-color: rgba(224, 90, 90, 0.4); }
+    .chat.blue { border-color: rgba(91, 141, 239, 0.4); }
+    .chat-title {
+      font-family: var(--font-mono); font-size: 10px; text-transform: uppercase;
+      letter-spacing: 0.14em; color: var(--text-muted); margin-bottom: 10px;
+    }
+    .chat.red .chat-title { color: var(--red); }
+    .chat.blue .chat-title { color: var(--blue); }
+    .chat-log {
+      font-family: var(--font-mono); font-size: 12px; line-height: 1.7; color: var(--text-secondary);
+      max-height: 150px; overflow-y: auto; margin-bottom: 10px;
+    }
+    .chat-log .msg { overflow-wrap: anywhere; }
+    .chat-log .msg b { color: var(--text-primary); font-weight: 500; margin-right: 4px; }
+    .chat-empty { color: var(--text-muted); font-size: 11px; }
+    .chat-row { display: flex; gap: 8px; }
+    .chat-row input {
+      flex: 1; min-width: 0; background: var(--bg-elevated); border: 1px solid var(--border);
+      border-radius: 8px; color: var(--text-primary); font-family: var(--font-sans);
+      font-size: 14px; padding: 7px 12px;
+    }
+
     .rules { margin-top: 40px; font-size: 13px; color: var(--text-muted); line-height: 1.75; }
     .rules h2 { font-size: 15px; font-weight: 500; color: var(--text-primary); margin-bottom: 10px; }
     .rules h3 { font-size: 13px; color: var(--text-secondary); margin: 18px 0 6px; }
@@ -368,6 +395,15 @@
     </div>
 
     <p class="statusline" id="status"></p>
+
+    <div class="chat" id="chat-panel" hidden>
+      <p class="chat-title"><span data-i18n="chat.title">team chat</span></p>
+      <div class="chat-log" id="chat-log"></div>
+      <div class="chat-row">
+        <input id="chat-input" maxlength="200" autocomplete="off" aria-label="Team chat message" />
+        <button class="btn btn-secondary btn-sm" id="chat-send" data-i18n="chat.send">Send</button>
+      </div>
+    </div>
 
     <div class="toolbar">
       <button class="btn btn-secondary btn-sm" id="btn-reset" data-i18n="tool.reset" hidden>New game</button>
