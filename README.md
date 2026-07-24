@@ -19,6 +19,12 @@ A spymaster gives one word and one number. Their team names words by clicking
 them: their own colour keeps the turn alive, a bystander or an enemy word ends
 it, the assassin ends the game. Turn over all your own words first and you win.
 
+A click is a vote rather than a guess. Each card shows how many operatives on
+the guessing team have picked it, and the referee turns it over only when all
+of them have picked the same card; clicking your own pick again takes it back.
+Operatives who drop out stop being counted, so one closed tab cannot freeze a
+turn, and a team of one plays exactly as it did before.
+
 ## Why the server deals
 
 Every other cabinet in the arcade proves a run after the fact: the page submits

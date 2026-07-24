@@ -84,6 +84,9 @@
       "meta.guesses": function (n) { return n === 1 ? "one guess left" : n + " guesses left"; },
       "meta.unlimited": "guess as long as you keep hitting your own",
       "meta.mustguess": "name at least one word before you pass",
+      "meta.votes": function (have, need) { return have + "/" + need + " confirmed"; },
+      "vote.hint": "a card turns over once every operative on your team has picked it. click yours again to take it back.",
+      "vote.aria": function (n) { return ", " + n + " confirmed"; },
       "log.start": function (team) { return "new table dealt, " + team + " starts"; },
       "log.clue": function (name, team, word, count) { return name + " (" + team + ") · " + word + " " + count; },
       "log.reveal": function (name, word, color) { return name + " named " + word + " · " + color; },
@@ -156,6 +159,9 @@
       "meta.guesses": function (n) { return "осталось попыток: " + n; },
       "meta.unlimited": "отгадывайте, пока открываете свои слова",
       "meta.mustguess": "перед передачей хода нужно назвать хотя бы одно слово",
+      "meta.votes": function (have, need) { return "подтвердили: " + have + "/" + need; },
+      "vote.hint": "карта откроется, когда её выберут все игроки команды. чтобы снять свой голос, нажмите на карту ещё раз.",
+      "vote.aria": function (n) { return ", голосов: " + n; },
       "log.start": function (team) { return "новый стол, первыми ходят " + team; },
       "log.clue": function (name, team, word, count) { return name + " (" + team + ") · " + word + " " + count; },
       "log.reveal": function (name, word, color) { return name + " называет " + word + " · " + color; },
@@ -372,7 +378,26 @@
     if (!S) return t("st.connecting");
     if (S.status === "lobby") return t("st.lobby");
     if (S.status === "live" && me() && !me().team) return t("st.watching");
+    if (canGuess() && S.need > 1) return t("vote.hint");
     return "";
+  }
+
+  /* Arcade coins for a finished game, once per round and only for someone who
+     was actually seated. There is no run to replay here, so this is a flat
+     rate rather than a score. */
+  var paidRound = -1;
+  function payout() {
+    var p = me();
+    if (!S || S.status !== "over" || !p || !p.team || paidRound === S.round) return;
+    paidRound = S.round;
+    if (window.Arcade && Arcade.earn) {
+      Arcade.earn("codenames", { result: S.winner === p.team ? "win" : "loss" });
+    }
+  }
+
+  /* votes cast this turn, however they are spread across the table */
+  function cast() {
+    return (S.votes || []).reduce(function (a, b) { return a + b; }, 0);
   }
 
   function renderTeams() {
@@ -399,6 +424,7 @@
 
   function renderBoard() {
     var free = freeRevealMode();
+    var votes = S.votes || [];
     for (var i = 0; i < 25; i++) {
       var c = cells[i];
       var word = S.words[i] || "";
@@ -414,9 +440,23 @@
         ? S.key && S.key[i] === me().team && !S.revealed[i]
         : canGuess() && !S.revealed[i];
       if (clickable) cls += " live";
+
+      /* the tally the whole table can see: how many operatives have pointed at
+         this card, and which one is your own vote */
+      var n = votes[i] || 0;
+      if (n && !S.revealed[i]) {
+        var tag = document.createElement("span");
+        tag.className = "votes" + (S.turn === "red" ? " red" : " blue");
+        tag.textContent = n;
+        c.appendChild(tag);
+        cls += " picked";
+        if (S.vote === i) cls += " mine";
+      }
       c.className = cls;
       c.disabled = !clickable;
-      c.setAttribute("aria-label", word + (S.revealed[i] ? ", " + t("color." + S.colors[i]) : ""));
+      c.setAttribute("aria-label", word +
+        (S.revealed[i] ? ", " + t("color." + S.colors[i]) : "") +
+        (n && !S.revealed[i] ? tf("vote.aria", n) : ""));
     }
     seenRevealed = S.revealed.slice();
   }
@@ -449,10 +489,12 @@
     if (S.clue) {
       el["clue-text"].innerHTML = esc(S.clue.word) + ' <span class="count">' +
         (S.clue.count === 0 ? "∞" : S.clue.count) + "</span>";
-      el["clue-meta"].textContent = S.clue.count === 0
+      var meta = S.clue.count === 0
         ? t("meta.unlimited")
         : tf("meta.guesses", Math.max(0, S.guessesLeft)) +
           (S.guessesMade === 0 ? " · " + t("meta.mustguess") : "");
+      if (S.phase === "guess" && S.need > 1) meta += " · " + tf("meta.votes", cast(), S.need);
+      el["clue-meta"].textContent = meta;
     }
 
     var note = "";
@@ -571,6 +613,7 @@
       if (!S || !S.words || S.words.length !== msg.words.length) seenRevealed = [];
       S = msg;
       render();
+      payout();
     };
 
     /* The socket is the only way to reach the referee, so a drop has to be

@@ -163,6 +163,7 @@
       margin-top: 18px;
     }
     .word {
+      position: relative;
       aspect-ratio: 1.35; display: flex; align-items: center; justify-content: center;
       text-align: center; padding: 4px 3px;
       background: var(--bg-surface); border: 1px solid var(--border); border-radius: 8px;
@@ -185,6 +186,20 @@
     .word.up { opacity: 0.85; }
     .word.fresh { animation: flip 160ms ease; }
     @keyframes flip { from { transform: scale(0.9); opacity: 0.4; } to { transform: scale(1); opacity: 0.85; } }
+
+    /* ── the vote tally ── how many operatives have pointed at this card */
+    .word.picked { border-color: var(--border-focus); }
+    .word.mine { background: var(--bg-elevated); }
+    .votes {
+      position: absolute; top: 4px; right: 4px;
+      min-width: 17px; height: 17px; padding: 0 4px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 999px; background: var(--bg-base); border: 1px solid var(--border-focus);
+      font-family: var(--font-mono); font-size: 10px; font-weight: 600; line-height: 1;
+      color: var(--text-primary);
+    }
+    .votes.red { border-color: var(--red); color: var(--red); }
+    .votes.blue { border-color: var(--blue); color: var(--blue); }
 
     /* ── clue bar ── */
     .clue-bar {
@@ -458,6 +473,13 @@
         team clued "africa 2" may name three words, and you must name at least
         one before you can pass. Turn over all your own words first and you win.</p>
 
+      <h3>Everyone has to agree</h3>
+      <p>A click is a vote, not a guess. Every card carries the number of
+        operatives on your team who have picked it, and it only turns over once
+        all of them have picked the same one. Clicking your own pick again takes
+        it back. A team of one operative is unanimous by itself, so nothing
+        changes for them. Teammates who close the tab stop being counted.</p>
+
       <h3>A clue against the rules</h3>
       <p>A machine cannot judge a root or a rhyme, so the other spymaster calls
         it. If they do, the offending team's turn ends immediately, and the
@@ -525,6 +547,13 @@
         заканчивает всю игру поражением. Угадать можно на одно слово больше, чем
         число в шифре, и хотя бы одно слово назвать придётся, прежде чем
         передать ход. Кто первым открыл все свои слова, тот и выиграл.</p>
+
+      <h3>Нужно согласие всей команды</h3>
+      <p>Нажатие на карту это голос, а не ход. На карте показано число игроков
+        команды, которые её выбрали, и открывается она только тогда, когда её
+        выбрали все. Повторное нажатие снимает ваш голос. Если в команде один
+        игрок, согласие у него с самим собой, и для него ничего не меняется.
+        Игроки, закрывшие вкладку, в подсчёт не входят.</p>
 
       <h3>Наказание за неправильный шифр</h3>
       <p>Корень и созвучие машина оценить не может, поэтому нарушение объявляет

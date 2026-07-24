@@ -56,6 +56,7 @@ function freshRoom(lang) {
     round: 0,
     log: [],
     chat: { red: [], blue: [] },
+    votes: {},
   };
 }
 
@@ -134,6 +135,7 @@ export class Room {
       this.room = (await this.state.storage.get("room")) || freshRoom("en");
     }
     if (!this.room.chat) this.room.chat = { red: [], blue: [] };
+    if (!this.room.votes) this.room.votes = {};
     return this.room;
   }
 
@@ -170,13 +172,25 @@ export class Room {
      `closing` is the socket a close handler is running for. It is still in
      getWebSockets() at that point, so without excluding it the room is told
      someone who just left is still present. */
+  onlineIds(closing) {
+    const online = new Set();
+    for (const ws of this.state.getWebSockets()) {
+      if (ws === closing) continue;
+      const att = ws.deserializeAttachment();
+      if (att && att.id) online.add(att.id);
+    }
+    return online;
+  }
+
   push(closing) {
     const m = this.room;
     const live = this.state.getWebSockets().filter((s) => s !== closing);
-    const online = new Set();
-    for (const ws of live) {
-      const att = ws.deserializeAttachment();
-      if (att && att.id) online.add(att.id);
+    const online = this.onlineIds(closing);
+    const voters = this.voters(m, online);
+    const tally = new Array(25).fill(0);
+    for (const v of voters) {
+      const cell = m.votes[v];
+      if (Number.isInteger(cell) && cell >= 0 && cell < 25) tally[cell]++;
     }
 
     const shared = {
@@ -197,6 +211,8 @@ export class Room {
       endReason: m.endReason,
       penalty: m.penalty,
       left: { red: remaining(m, RED), blue: remaining(m, BLUE) },
+      votes: tally,
+      need: voters.length,
       host: m.host,
       round: m.round,
       ready: teamsReady(m),
@@ -221,6 +237,7 @@ export class Room {
           you: p ? { id: att.id, name: p.name, team: p.team, role: p.role } : null,
           key: showKey && m.key.length ? m.key : null,
           chat,
+          vote: att.id && Number.isInteger(m.votes[att.id]) ? m.votes[att.id] : null,
         }, shared));
       } catch { continue; }
       try { ws.send(frame); } catch { /* socket already gone; webSocketClose tidies up */ }
@@ -338,6 +355,7 @@ export class Room {
     m.round++;
     m.log = [];
     m.chat = { red: [], blue: [] };
+    m.votes = {};
     this.note(m, { t: "start", team: d.starter, lang: m.lang });
     await this.save();
     this.push();
@@ -368,11 +386,17 @@ export class Room {
     m.guessesLeft = count === 0 ? 25 : count + 1;
     m.guessesMade = 0;
     m.phase = "guess";
+    m.votes = {};
     this.note(m, { t: "clue", team: p.team, name: p.name, word: m.clue.word, count });
     await this.save();
     this.push();
   }
 
+  /* A click is a vote, not a guess. The card turns over only once every
+     operative on the guessing team is pointing at the same one, so nobody can
+     burn their team's turn on a card the rest of the table was still arguing
+     about. Clicking your own vote again takes it back. A team of one is
+     unanimous on its own, which is the old behaviour. */
   async onGuess(ws, msg, m, id) {
     const p = m.players[id];
     if (m.status !== "live") return this.fail(ws, "no game is running");
@@ -383,11 +407,43 @@ export class Room {
     if (!Number.isInteger(cell) || cell < 0 || cell > 24) return this.fail(ws, "no such card");
     if (m.revealed[cell]) return this.fail(ws, "that card is already face up");
 
+    if (m.votes[id] === cell) delete m.votes[id];
+    else m.votes[id] = cell;
+
+    const agreed = this.consensus(m, this.onlineIds());
+    if (agreed !== -1) this.reveal(m, agreed, p.name);
+    await this.save();
+    this.push();
+  }
+
+  /* who the vote is waiting on: the seated operatives of the guessing team who
+     are still connected. A teammate whose laptop slept does not get a veto. */
+  voters(m, online) {
+    if (m.status !== "live" || m.phase !== "guess") return [];
+    const out = [];
+    for (const id of m.order) {
+      const p = m.players[id];
+      if (p && p.role === "operative" && p.team === m.turn && online.has(id)) out.push(id);
+    }
+    return out;
+  }
+
+  consensus(m, online) {
+    const voters = this.voters(m, online);
+    if (!voters.length) return -1;
+    const first = m.votes[voters[0]];
+    if (!Number.isInteger(first) || m.revealed[first]) return -1;
+    for (const id of voters) if (m.votes[id] !== first) return -1;
+    return first;
+  }
+
+  reveal(m, cell, name) {
+    m.votes = {};
     m.revealed[cell] = true;
     m.guessesMade++;
     m.guessesLeft--;
     const color = m.key[cell];
-    this.note(m, { t: "reveal", team: m.turn, name: p.name, word: m.words[cell], color });
+    this.note(m, { t: "reveal", team: m.turn, name, word: m.words[cell], color });
 
     if (color === "assassin") {
       this.finish(m, other(m.turn), "assassin");
@@ -396,8 +452,6 @@ export class Room {
       if (cleared) this.finish(m, cleared, "cards");
       else if (color !== m.turn || m.guessesLeft <= 0) this.endTurn(m);
     }
-    await this.save();
-    this.push();
   }
 
   /* Official rule, kept: a team has to name at least one word before it can
@@ -484,6 +538,7 @@ export class Room {
     m.penalty = null;
     m.phase = "clue";
     m.chat = { red: [], blue: [] };
+    m.votes = {};
     await this.save();
     this.push();
   }
@@ -500,9 +555,11 @@ export class Room {
     m.clue = null;
     m.guessesLeft = 0;
     m.guessesMade = 0;
+    m.votes = {};
   }
 
   finish(m, winner, reason) {
+    m.votes = {};
     m.status = "over";
     m.winner = winner;
     m.endReason = reason;
@@ -516,19 +573,31 @@ export class Room {
      game because their laptop slept would end the room. */
   async handoff(closing) {
     const m = await this.load();
-    const live = this.state.getWebSockets().filter((s) => s !== closing);
-    const online = new Set();
-    for (const ws of live) {
-      const att = ws.deserializeAttachment();
-      if (att && att.id) online.add(att.id);
-    }
+    const online = this.onlineIds(closing);
+    let dirty = false;
+
     if (m.host && !online.has(m.host)) {
       const next = m.order.find((id) => online.has(id));
       if (next) {
         m.host = next;
-        await this.save();
+        dirty = true;
       }
     }
+
+    /* Someone leaving mid-vote drops their say, and the table they left behind
+       may already agree, so the tally is settled here too rather than waiting
+       for a teammate to click something twice. */
+    for (const id of Object.keys(m.votes)) {
+      if (!online.has(id)) { delete m.votes[id]; dirty = true; }
+    }
+    const agreed = this.consensus(m, online);
+    if (agreed !== -1) {
+      const who = this.voters(m, online).find((id) => m.votes[id] === agreed);
+      this.reveal(m, agreed, who ? m.players[who].name : "");
+      dirty = true;
+    }
+
+    if (dirty) await this.save();
     this.push(closing);
   }
 
