@@ -46,6 +46,7 @@
       "seat.watch": "Sit out",
       "seat.start": "Start game",
       "seat.locked": "Seats are locked while a game is running.",
+      "seat.frozen": "Seats stay as they were. The host starts another game or resets the room.",
       "seat.ready": "Both teams are seated. The host starts the game.",
       "seat.waiting": "Each team needs a spymaster and at least one operative.",
       "clue.give": "Give clue",
@@ -53,10 +54,13 @@
       "clue.pass": "Pass",
       "clue.illegal": "Illegal clue",
       "clue.unlimited": "any number of words",
-      "chat.title": "team chat",
+      "chat.all": "room",
+      "chat.team": "team",
       "chat.send": "Send",
-      "chat.placeholder": "talk to your team",
-      "chat.empty": "only your team's operatives see this. the spymaster does not.",
+      "chat.say.all": "talk to the room",
+      "chat.say.team": "talk to your team",
+      "chat.empty.all": "everybody in the room sees this, spymasters included. ◆ marks one.",
+      "chat.empty.team": "only your team's operatives see this. the spymaster does not.",
       "tool.reset": "New game",
       "tool.arcade": "Arcade",
       "st.noroom": "create a lobby or join one with a code",
@@ -121,6 +125,7 @@
       "seat.watch": "Наблюдать",
       "seat.start": "Начать игру",
       "seat.locked": "Пока идёт игра, места закреплены.",
+      "seat.frozen": "Места остаются прежними. Хост начинает новую игру или сбрасывает комнату.",
       "seat.ready": "Обе команды собраны. Игру начинает хост.",
       "seat.waiting": "В каждой команде нужен руководитель и хотя бы один игрок.",
       "clue.give": "Дать шифр",
@@ -128,10 +133,13 @@
       "clue.pass": "Передать ход",
       "clue.illegal": "Шифр не по правилам",
       "clue.unlimited": "любое количество слов",
-      "chat.title": "чат команды",
+      "chat.all": "комната",
+      "chat.team": "команда",
       "chat.send": "Отправить",
-      "chat.placeholder": "обсудите с командой",
-      "chat.empty": "видят только игроки вашей команды, руководитель нет",
+      "chat.say.all": "написать всем",
+      "chat.say.team": "обсудите с командой",
+      "chat.empty.all": "видят все в комнате, включая руководителей. ◆ отмечает руководителя.",
+      "chat.empty.team": "видят только игроки вашей команды, руководитель нет",
       "tool.reset": "Новая игра",
       "tool.arcade": "Аркада",
       "st.noroom": "создайте лобби или войдите по коду",
@@ -180,6 +188,7 @@
         "bad frame": "испорченный пакет",
         "unknown message": "неизвестная команда",
         "seats are locked while a game is running": "пока идёт игра, места закреплены",
+        "seats stay as they were until the host resets the room": "места закреплены, пока хост не сбросит комнату",
         "pick a team and a role": "выберите и команду, и роль",
         "that team already has a spymaster": "в этой команде уже есть руководитель",
         "only the host picks the deck": "колоду выбирает хост",
@@ -245,6 +254,8 @@
   var ws = null, wantOpen = false, retry = 0, retryTimer = null;
   var seenRevealed = [];
   var cells = [];
+  var chatTab = "all";
+  var chatSeen = { all: 0, team: 0 };
 
   var el = {};
   ["board", "status", "log", "score", "teams", "bench", "share", "share-link", "join-code",
@@ -252,7 +263,7 @@
    "clue-view", "clue-text", "clue-meta", "clue-word", "clue-count", "clue-warn", "btn-pass",
    "btn-illegal", "penalty-note", "left-red", "left-blue", "turn-label", "count-red",
    "count-blue", "bench-hint", "spectators", "room-hint",
-   "chat-panel", "chat-log", "chat-input", "chat-send"].forEach(function (id) {
+   "chat-panel", "chat-tabs", "chat-log", "chat-input", "chat-send"].forEach(function (id) {
     el[id] = document.getElementById(id);
   });
 
@@ -290,7 +301,6 @@
     el["join-code"].placeholder = t("room.code");
     el["name-input"].placeholder = t("room.name");
     el["clue-word"].placeholder = t("clue.word");
-    el["chat-input"].placeholder = t("chat.placeholder");
     render();
   }
 
@@ -336,27 +346,50 @@
       el["count-blue"].textContent = S.status === "lobby" ? "" : S.left.blue;
       el["bench-hint"].textContent = S.status === "live"
         ? t("seat.locked")
-        : (S.ready ? t("seat.ready") : t("seat.waiting"));
-      renderChat();
+        : S.status === "over"
+          ? t("seat.frozen")
+          : (S.ready ? t("seat.ready") : t("seat.waiting"));
     }
+    renderChat();
     el.status.textContent = statusText();
   }
 
-  /* Only an operative gets a chat panel, and only their own team's; the
-     referee sends this frame's `chat` array to nobody else, so a spymaster or
-     the other side never has it to render. */
+  /* Two channels behind one panel. Which of them this page even has is the
+     referee's call: the room channel rides in every frame, the team one only
+     in a seated operative's, so switching tabs can never show something the
+     frame did not already carry. */
   function renderChat() {
     var p = me();
-    var mine = !!(roomCode && p && p.role === "operative" && S.chat);
-    el["chat-panel"].hidden = !mine;
-    el["chat-panel"].className = "chat" + (mine ? " " + p.team : "");
-    if (!mine) return;
+    var joined = !!(roomCode && p && S.chat);
+    el["chat-panel"].hidden = !joined;
+    if (!joined) { chatSeen = { all: 0, team: 0 }; return; }
+
+    var team = S.chat.team ? p.team : null;
+    if (!team) chatTab = "all";
+    var have = { all: S.chat.all.length, team: team ? S.chat.team.length : 0 };
+    /* a new game empties the team channel, and a count left over from the last
+       one would sit above the new length and swallow every unread mark */
+    ["all", "team"].forEach(function (c) { if (have[c] < chatSeen[c]) chatSeen[c] = have[c]; });
+    chatSeen[chatTab] = have[chatTab];
+
+    el["chat-panel"].className = "chat" + (chatTab === "team" ? " " + team : "");
+    el["chat-tabs"].querySelectorAll(".pill").forEach(function (b) {
+      var chan = b.getAttribute("data-chan");
+      b.hidden = chan === "team" && !team;
+      b.setAttribute("aria-pressed", String(chan === chatTab));
+      b.classList.toggle("unread", chan !== chatTab && have[chan] > chatSeen[chan]);
+    });
+    el["chat-input"].placeholder = t("chat.say." + chatTab);
+
+    var lines = chatTab === "team" ? S.chat.team : S.chat.all;
     var atBottom = el["chat-log"].scrollHeight - el["chat-log"].scrollTop - el["chat-log"].clientHeight < 40;
-    el["chat-log"].innerHTML = S.chat.length
-      ? S.chat.map(function (mgs) {
-          return '<div class="msg"><b>' + esc(mgs.name) + "</b> " + esc(mgs.text) + "</div>";
+    el["chat-log"].innerHTML = lines.length
+      ? lines.map(function (mgs) {
+          var cls = ((mgs.team || "") + (mgs.sm ? " sm" : "")).trim();
+          return '<div class="msg"><b' + (cls ? ' class="' + cls + '"' : "") + ">" +
+            esc(mgs.name) + "</b> " + esc(mgs.text) + "</div>";
         }).join("")
-      : '<p class="chat-empty">' + t("chat.empty") + "</p>";
+      : '<p class="chat-empty">' + t("chat.empty." + chatTab) + "</p>";
     if (atBottom) el["chat-log"].scrollTop = el["chat-log"].scrollHeight;
   }
 
@@ -418,7 +451,7 @@
       }).join("");
     });
     document.querySelectorAll("[data-seat]").forEach(function (btn) {
-      btn.disabled = S.status === "live";
+      btn.disabled = S.status !== "lobby";
     });
   }
 
@@ -728,6 +761,15 @@
     if (e.key === "Enter") giveClue();
   });
 
+  el["chat-tabs"].addEventListener("click", function (e) {
+    var chan = e.target.getAttribute("data-chan");
+    if (!chan || chan === chatTab) return;
+    chatTab = chan;
+    renderChat();
+    el["chat-log"].scrollTop = el["chat-log"].scrollHeight;
+    el["chat-input"].focus();
+  });
+
   el["chat-send"].addEventListener("click", sendChat);
   el["chat-input"].addEventListener("keydown", function (e) {
     if (e.key === "Enter") { e.preventDefault(); sendChat(); }
@@ -736,7 +778,7 @@
   function sendChat() {
     var text = el["chat-input"].value.trim();
     if (!text) return;
-    send({ type: "chat", text: text });
+    send({ type: "chat", channel: chatTab, text: text });
     el["chat-input"].value = "";
   }
 

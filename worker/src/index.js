@@ -55,7 +55,7 @@ function freshRoom(lang) {
     host: null,
     round: 0,
     log: [],
-    chat: { red: [], blue: [] },
+    chat: { all: [], red: [], blue: [] },
     votes: {},
   };
 }
@@ -134,7 +134,15 @@ export class Room {
     if (!this.room) {
       this.room = (await this.state.storage.get("room")) || freshRoom("en");
     }
-    if (!this.room.chat) this.room.chat = { red: [], blue: [] };
+    /* rooms saved before the room channel existed have a two-key chat */
+    const c = this.room.chat;
+    if (!c || !Array.isArray(c.all)) {
+      this.room.chat = {
+        all: [],
+        red: c && Array.isArray(c.red) ? c.red : [],
+        blue: c && Array.isArray(c.blue) ? c.blue : [],
+      };
+    }
     if (!this.room.votes) this.room.votes = {};
     return this.room;
   }
@@ -227,10 +235,15 @@ export class Room {
       const att = ws.deserializeAttachment() || {};
       const p = att.id ? m.players[att.id] : null;
       const showKey = m.status === "over" || (p && p.role === "spymaster");
-      /* the team channel is for an operative and their teammates only: the
-         spymaster is walled off so they cannot nudge a guess, and the other
-         team never sees it */
-      const chat = p && p.role === "operative" && p.team ? m.chat[p.team] : null;
+      /* Two channels. The room channel goes to everyone who joined, spectators
+         and spymasters included, because otherwise half the table has no way to
+         say anything. The team channel is for an operative and their teammates
+         only: the spymaster is walled off so they cannot nudge a guess, and the
+         other team never sees it. */
+      const chat = {
+        all: m.chat.all,
+        team: p && p.role === "operative" && p.team ? m.chat[p.team] : null,
+      };
       let frame;
       try {
         frame = JSON.stringify(Object.assign({
@@ -306,11 +319,16 @@ export class Room {
     this.push();
   }
 
-  /* Seats are frozen once a game is live. An operative who could promote
-     themselves mid-game would be one click away from the key, and a spymaster
-     who could change teams would carry it across the table. */
+  /* Seats move in the lobby and nowhere else. Once a game is live an operative
+     who could promote themselves would be one click away from the key, and a
+     spymaster who could change teams would carry it across the table. Once it
+     is over the key is public and the winner is known, so a seat change is
+     either someone joining the side that just won or the table quietly
+     reshuffling itself between rounds. The host opens the seats again with a
+     reset. */
   async onSeat(ws, msg, m, id) {
     if (m.status === "live") return this.fail(ws, "seats are locked while a game is running");
+    if (m.status === "over") return this.fail(ws, "seats stay as they were until the host resets the room");
     const team = msg.team === RED || msg.team === BLUE ? msg.team : null;
     const role = msg.role === "spymaster" || msg.role === "operative" ? msg.role : null;
     if (!team !== !role) return this.fail(ws, "pick a team and a role");
@@ -354,7 +372,10 @@ export class Room {
     m.status = "live";
     m.round++;
     m.log = [];
-    m.chat = { red: [], blue: [] };
+    /* the team channels argued about a board that no longer exists; the room
+       channel is the table talking to itself and outlives the game */
+    m.chat.red = [];
+    m.chat.blue = [];
     m.votes = {};
     this.note(m, { t: "start", team: d.starter, lang: m.lang });
     await this.save();
@@ -468,20 +489,34 @@ export class Room {
     this.push();
   }
 
-  /* The team channel. Only a seated operative may post, and the frame carrying
-     it back out goes to that team's operatives alone (see push). The spymaster
-     giving the clue never sees it, which is the whole point: the clue is the
-     only thing they are allowed to say. */
+  /* Two channels, one handler. The room channel takes anyone who joined. The
+     team channel takes a seated operative only, and the frame carrying it back
+     out goes to that team's operatives alone (see push). The spymaster giving
+     the clue never sees it, which is the whole point: the clue is the only
+     thing they are allowed to say to their operatives.
+
+     A spymaster can still talk in the room channel, so their name is stamped
+     with the seat they hold: a table reading it knows the person typing is
+     looking at the key. */
   async onChat(ws, msg, m, id) {
     const p = m.players[id];
-    if (p.role !== "operative" || !p.team) return this.fail(ws, "only seated operatives have a team chat");
+    const room = msg.channel !== "team";
+    if (!room && (p.role !== "operative" || !p.team)) {
+      return this.fail(ws, "only seated operatives have a team chat");
+    }
     const raw = String(msg.text || "");
     let text = "";
     for (const ch of raw) { const c = ch.codePointAt(0); if (c >= 32 && c !== 127) text += ch; }
     text = text.trim().slice(0, CHAT_TEXT_MAX);
     if (!text) return;
-    const line = m.chat[p.team];
-    line.push({ name: p.name, text });
+
+    const entry = { name: p.name, text };
+    if (room) {
+      if (p.team) entry.team = p.team;
+      if (p.role === "spymaster") entry.sm = 1;
+    }
+    const line = room ? m.chat.all : m.chat[p.team];
+    line.push(entry);
     if (line.length > CHAT_MAX) line.splice(0, line.length - CHAT_MAX);
     await this.save();
     this.push();
@@ -537,7 +572,8 @@ export class Room {
     m.endReason = null;
     m.penalty = null;
     m.phase = "clue";
-    m.chat = { red: [], blue: [] };
+    m.chat.red = [];
+    m.chat.blue = [];
     m.votes = {};
     await this.save();
     this.push();

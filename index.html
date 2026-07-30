@@ -240,25 +240,34 @@
     .log .miss { color: var(--tan); }
     .log .kill { color: var(--danger); }
 
-    /* ── team chat ── operatives only, tinted to the operative's team ── */
+    /* ── chat ── a room channel everybody has and a team channel only that
+       team's operatives have, tinted when the team one is showing ── */
     .chat {
       margin-top: 18px; background: var(--bg-surface); border: 1px solid var(--border);
       border-radius: var(--radius); padding: 12px 14px;
     }
     .chat.red { border-color: rgba(224, 90, 90, 0.4); }
     .chat.blue { border-color: rgba(91, 141, 239, 0.4); }
-    .chat-title {
-      font-family: var(--font-mono); font-size: 10px; text-transform: uppercase;
-      letter-spacing: 0.14em; color: var(--text-muted); margin-bottom: 10px;
+    .chat-tabs { margin-bottom: 10px; }
+    .chat-tabs .pill { position: relative; }
+    .chat.red .pill[data-chan="team"][aria-pressed="true"] { background: var(--red); border-color: var(--red); }
+    .chat.blue .pill[data-chan="team"][aria-pressed="true"] { background: var(--blue); border-color: var(--blue); }
+    /* a channel you are not looking at says so rather than moving silently */
+    .chat-tabs .pill.unread::after {
+      content: ""; position: absolute; top: 3px; right: 4px;
+      width: 5px; height: 5px; border-radius: 50%; background: var(--accent);
     }
-    .chat.red .chat-title { color: var(--red); }
-    .chat.blue .chat-title { color: var(--blue); }
     .chat-log {
       font-family: var(--font-mono); font-size: 12px; line-height: 1.7; color: var(--text-secondary);
       max-height: 150px; overflow-y: auto; margin-bottom: 10px;
     }
     .chat-log .msg { overflow-wrap: anywhere; }
     .chat-log .msg b { color: var(--text-primary); font-weight: 500; margin-right: 4px; }
+    .chat-log .msg b.red { color: var(--red); }
+    .chat-log .msg b.blue { color: var(--blue); }
+    /* the room channel is the one place a spymaster can talk, so it says which
+       of the people talking are holding the key */
+    .chat-log .msg b.sm::before { content: "◆ "; font-size: 9px; vertical-align: 1px; }
     .chat-empty { color: var(--text-muted); font-size: 11px; }
     .chat-row { display: flex; gap: 8px; }
     .chat-row input {
@@ -412,10 +421,13 @@
     <p class="statusline" id="status"></p>
 
     <div class="chat" id="chat-panel" hidden>
-      <p class="chat-title"><span data-i18n="chat.title">team chat</span></p>
+      <div class="sub-pills chat-tabs" id="chat-tabs" role="group" aria-label="Chat channel">
+        <button class="pill" data-chan="all" aria-pressed="true" data-i18n="chat.all">room</button>
+        <button class="pill" data-chan="team" aria-pressed="false" data-i18n="chat.team" hidden>team</button>
+      </div>
       <div class="chat-log" id="chat-log"></div>
       <div class="chat-row">
-        <input id="chat-input" maxlength="200" autocomplete="off" aria-label="Team chat message" />
+        <input id="chat-input" maxlength="200" autocomplete="off" aria-label="Chat message" />
         <button class="btn btn-secondary btn-sm" id="chat-send" data-i18n="chat.send">Send</button>
       </div>
     </div>

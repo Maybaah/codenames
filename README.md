@@ -11,9 +11,21 @@ the room and the host picks it before the game starts.
 ## How a room works
 
 Create a lobby, send the link. Four players at least: a spymaster and at least
-one operative on each side. Everyone else can sit out and watch. Seats are
-locked once a game starts, because an operative who could promote themselves
-would be one click away from the key.
+one operative on each side. Everyone else can sit out and watch.
+
+Seats move in the lobby and nowhere else. Once a game is live an operative who
+could promote themselves would be one click away from the key. Once it is over
+the key is public and the winner is known, so a seat change is either somebody
+joining the side that just won or the table quietly reshuffling itself between
+rounds. The host opens the seats again with a reset.
+
+Two chat channels. The room channel takes anyone who joined, spectators and
+spymasters included, and a spymaster's name is stamped so the table knows the
+person typing is looking at the key. The team channel takes a seated operative
+only, and the referee sends it back out to that team's operatives alone: the
+spymaster is walled off, because the clue is the only thing they are allowed to
+say to their operatives. A new game clears the team channels and keeps the room
+one.
 
 A spymaster gives one word and one number. Their team names words by clicking
 them: their own colour keeps the turn alive, a bystander or an enemy word ends
