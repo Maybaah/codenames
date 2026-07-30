@@ -70,6 +70,9 @@
       "st.unreachable": "could not reach the room",
       "st.lobby": "pick a side and a role, then the host starts the game",
       "st.watching": "you are watching this one",
+      "st.admin": function (n) {
+        return n === 1 ? "an admin is watching this room" : n + " admins are watching this room";
+      },
       "log.assassin": "the assassin",
       "log.cards": "all its words found",
       "color.red": "a red agent",
@@ -149,6 +152,9 @@
       "st.unreachable": "комната недоступна",
       "st.lobby": "выберите команду и роль, дальше игру начинает хост",
       "st.watching": "вы наблюдаете за этой партией",
+      "st.admin": function (n) {
+        return n === 1 ? "за комнатой наблюдает администратор" : "за комнатой наблюдают администраторы: " + n;
+      },
       "log.assassin": "убийца",
       "log.cards": "все слова открыты",
       "color.red": "красный агент",
@@ -263,7 +269,8 @@
    "clue-view", "clue-text", "clue-meta", "clue-word", "clue-count", "clue-warn", "btn-pass",
    "btn-illegal", "penalty-note", "left-red", "left-blue", "turn-label", "count-red",
    "count-blue", "bench-hint", "spectators", "room-hint",
-   "chat-panel", "chat-tabs", "chat-log", "chat-input", "chat-send"].forEach(function (id) {
+   "chat-panel", "chat-tabs", "chat-log", "chat-input", "chat-send",
+   "watch-note"].forEach(function (id) {
     el[id] = document.getElementById(id);
   });
 
@@ -352,6 +359,9 @@
     }
     renderChat();
     el.status.textContent = statusText();
+    var eyes = S && S.watchers ? S.watchers : 0;
+    el["watch-note"].textContent = eyes ? tf("st.admin", eyes) : "";
+    el["watch-note"].hidden = !eyes;
   }
 
   /* Two channels behind one panel. Which of them this page even has is the

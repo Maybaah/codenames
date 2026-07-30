@@ -1,5 +1,6 @@
 worker/node_modules/
 worker/.wrangler/
+worker/.dev.vars
 .claude/
 .idea/
 .DS_Store

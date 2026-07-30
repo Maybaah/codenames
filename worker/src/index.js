@@ -27,6 +27,13 @@ const LOG_MAX = 60;
 const CHAT_MAX = 50;
 const CHAT_TEXT_MAX = 200;
 
+/* The admin gate. Five wrong tokens and the whole thing shuts for five
+   minutes: the count lives in the directory rather than in a room, so five is
+   five in total and not five per four-character code. */
+const ADMIN_MAX_FAILS = 5;
+const ADMIN_LOCK_MS = 5 * 60 * 1000;
+const ANNOUNCE_MS = 30 * 1000;
+
 const CLUE_RE = /^[\p{L}\p{N}][\p{L}\p{N}'-]*$/u;
 const NAME_STRIP = /[^\p{L}\p{N} ._-]/gu;
 
@@ -123,11 +130,103 @@ function teamsReady(room) {
   return !!t.red.spymaster && !!t.blue.spymaster && t.red.operatives >= 1 && t.blue.operatives >= 1;
 }
 
+/* Comparing a secret with === returns as soon as two bytes differ, which tells
+   a patient caller how much of their guess was right. This reads both to the
+   end whatever it finds. */
+function safeEqual(a, b) {
+  const enc = new TextEncoder();
+  const x = enc.encode(String(a));
+  const y = enc.encode(String(b));
+  let diff = x.length ^ y.length;
+  for (let i = 0; i < Math.max(x.length, y.length); i++) diff |= (x[i] || 0) ^ (y[i] || 0);
+  return diff === 0;
+}
+
+/* Durable Objects are addressed by name and cannot be listed, so a room nobody
+   sent you the code for is unreachable even to the person who owns the site.
+   Every room posts a line here when it starts, finishes or goes quiet, and the
+   admin page reads the lines. Nothing in a line is secret: a code, a status
+   and two counts. The key and the chat stay in the room they belong to. */
+export class Directory {
+  constructor(state, env) {
+    this.state = state;
+    this.env = env;
+  }
+
+  async fetch(req) {
+    const path = new URL(req.url).pathname;
+    if (path === "/note") return this.note(await req.json());
+    if (path === "/drop") return this.drop(await req.json());
+    if (path === "/gate") return this.gate(await req.json());
+    if (path === "/list") return Response.json(await this.rooms());
+    return new Response("not found", { status: 404 });
+  }
+
+  async rooms() {
+    const all = (await this.state.storage.get("rooms")) || {};
+    const now = Date.now();
+    return Object.values(all)
+      .filter((r) => now - r.updated <= IDLE_MS)
+      .sort((a, b) => b.updated - a.updated);
+  }
+
+  async note(line) {
+    const all = (await this.state.storage.get("rooms")) || {};
+    const now = Date.now();
+    all[line.code] = line;
+    for (const code of Object.keys(all)) {
+      if (now - all[code].updated > IDLE_MS) delete all[code];
+    }
+    await this.state.storage.put("rooms", all);
+    return new Response("ok");
+  }
+
+  async drop({ code }) {
+    const all = (await this.state.storage.get("rooms")) || {};
+    delete all[code];
+    await this.state.storage.put("rooms", all);
+    return new Response("ok");
+  }
+
+  async gate({ token }) {
+    const secret = this.env.ADMIN_TOKEN;
+    if (!secret) return Response.json({ verdict: "unconfigured" });
+
+    const now = Date.now();
+    const g = (await this.state.storage.get("gate")) || { fails: 0, until: 0 };
+    if (g.until > now) return Response.json({ verdict: "locked" });
+
+    if (safeEqual(token, secret)) {
+      if (g.fails) await this.state.storage.delete("gate");
+      return Response.json({ verdict: "ok" });
+    }
+    g.fails++;
+    if (g.fails >= ADMIN_MAX_FAILS) { g.fails = 0; g.until = now + ADMIN_LOCK_MS; }
+    await this.state.storage.put("gate", g);
+    return Response.json({ verdict: "bad" });
+  }
+}
+
+function directory(env) {
+  return env.DIRECTORY.get(env.DIRECTORY.idFromName("rooms"));
+}
+
+async function checkToken(env, token) {
+  if (typeof token !== "string" || !token || token.length > 256) return "bad";
+  const res = await directory(env).fetch("https://d/gate", {
+    method: "POST",
+    body: JSON.stringify({ token }),
+  });
+  return (await res.json()).verdict;
+}
+
 export class Room {
   constructor(state, env) {
     this.state = state;
     this.env = env;
     this.room = null;
+    this.code = null;
+    this.noted = 0;
   }
 
   async load() {
@@ -150,20 +249,63 @@ export class Room {
   async save() {
     await this.state.storage.put("room", this.room);
     await this.state.storage.setAlarm(Date.now() + IDLE_MS);
+    this.announce();
+  }
+
+  /* One line in the directory, so the admin page can find a room without being
+     told its code. Throttled, because every guess calls save() and a room does
+     not become interesting thirty times a minute. Never awaited: a directory
+     that is slow or gone must not hold up the game. */
+  announce(force, closing) {
+    const now = Date.now();
+    if (!force && now - this.noted < ANNOUNCE_MS) return;
+    if (!this.code || !this.room) return;
+    this.noted = now;
+    const m = this.room;
+    const online = this.onlineIds(closing);
+    const line = {
+      code: this.code,
+      status: m.status,
+      lang: m.lang,
+      round: m.round,
+      players: m.order.length,
+      here: m.order.filter((id) => online.has(id)).length,
+      updated: now,
+    };
+    const p = directory(this.env)
+      .fetch("https://d/note", { method: "POST", body: JSON.stringify(line) })
+      .catch(() => {});
+    if (this.state.waitUntil) this.state.waitUntil(p);
   }
 
   /* an abandoned room forgets itself, so a four-character code is never held
      hostage by a game nobody came back to */
   async alarm() {
     if (this.state.getWebSockets().length === 0) {
+      const code = this.code || (await this.state.storage.get("code"));
       await this.state.storage.deleteAll();
       this.room = null;
+      if (code) {
+        await directory(this.env)
+          .fetch("https://d/drop", { method: "POST", body: JSON.stringify({ code }) })
+          .catch(() => {});
+      }
     } else {
       await this.state.storage.setAlarm(Date.now() + IDLE_MS);
     }
   }
 
+  /* A room is addressed by name and never told what that name was, so it reads
+     it off the path it was reached on and keeps it. The directory line needs
+     it and so does the admin frame. */
   async fetch(req) {
+    if (!this.code) {
+      const hit = new URL(req.url).pathname.match(/\/room\/([A-Z0-9]{4})$/);
+      if (hit) {
+        this.code = hit[1];
+        await this.state.storage.put("code", this.code);
+      }
+    }
     if (req.headers.get("Upgrade") !== "websocket") {
       return new Response("expected websocket", { status: 426 });
     }
@@ -201,9 +343,16 @@ export class Room {
       if (Number.isInteger(cell) && cell >= 0 && cell < 25) tally[cell]++;
     }
 
+    let watchers = 0;
+    for (const ws of live) {
+      const a = ws.deserializeAttachment();
+      if (a && a.admin) watchers++;
+    }
+
     const shared = {
       type: "state",
       v: PROTOCOL,
+      watchers,
       lang: m.lang,
       status: m.status,
       words: m.words,
@@ -233,6 +382,25 @@ export class Room {
 
     for (const ws of live) {
       const att = ws.deserializeAttachment() || {};
+
+      /* The one frame that holds nothing back: the key, both team channels and
+         who voted for what. It goes only to a socket that answered the gate,
+         and that socket has no id, so nothing it is shown can be played. */
+      if (att.admin) {
+        try {
+          ws.send(JSON.stringify(Object.assign({}, shared, {
+            admin: true,
+            code: this.code,
+            you: null,
+            key: m.key.length ? m.key : null,
+            chat: { all: m.chat.all, red: m.chat.red, blue: m.chat.blue },
+            picks: m.votes,
+            log: m.log,
+          })));
+        } catch { /* socket already gone; webSocketClose tidies up */ }
+        continue;
+      }
+
       const p = att.id ? m.players[att.id] : null;
       const showKey = m.status === "over" || (p && p.role === "spymaster");
       /* Two channels. The room channel goes to everyone who joined, spectators
@@ -273,9 +441,14 @@ export class Room {
     if (!msg || typeof msg !== "object") return this.fail(ws, "bad frame");
 
     const m = await this.load();
+    const att = ws.deserializeAttachment();
+
+    if (msg.type === "admin") return this.onAdmin(ws, msg, att);
+    /* An admin socket is not a player and cannot become one. Sending join down
+       it would otherwise seat somebody who is already holding the key. */
+    if (att && att.admin) return this.fail(ws, "this socket is watching, not playing");
     if (msg.type === "join") return this.onJoin(ws, msg, m);
 
-    const att = ws.deserializeAttachment();
     if (!att || !att.id || !m.players[att.id]) return this.fail(ws, "join first");
     const id = att.id;
 
@@ -292,6 +465,27 @@ export class Room {
       case "reset": return this.onReset(ws, m, id);
       default: return this.fail(ws, "unknown message");
     }
+  }
+
+  /* Watching is a socket, not a role. It carries no player id, so it never
+     appears in the roster, never votes and never takes a seat, and the room is
+     told how many of them are attached rather than being watched in secret.
+     The token is a Worker secret checked in the directory; it is not in this
+     repository and it never leaves the object it is compared in. */
+  async onAdmin(ws, msg, att) {
+    if (att && att.id) return this.fail(ws, "open a second tab to watch");
+    if (att && att.admin) return this.push();
+
+    const verdict = await checkToken(this.env, msg.token);
+    if (verdict !== "ok") {
+      this.fail(ws, verdict === "locked" ? "too many attempts, wait five minutes"
+        : verdict === "unconfigured" ? "admin is not configured" : "bad admin token");
+      try { ws.close(4003, "denied"); } catch {}
+      return;
+    }
+    ws.serializeAttachment({ admin: true });
+    this.announce(true);
+    this.push();
   }
 
   async onJoin(ws, msg, m) {
@@ -379,6 +573,7 @@ export class Room {
     m.votes = {};
     this.note(m, { t: "start", team: d.starter, lang: m.lang });
     await this.save();
+    this.announce(true);
     this.push();
   }
 
@@ -576,6 +771,7 @@ export class Room {
     m.chat.blue = [];
     m.votes = {};
     await this.save();
+    this.announce(true);
     this.push();
   }
 
@@ -603,6 +799,7 @@ export class Room {
     m.phase = "clue";
     m.guessesLeft = 0;
     this.note(m, { t: "end", team: winner, reason });
+    this.announce(true);
   }
 
   /* The host is whoever is still here. Losing the only person who can start a
@@ -634,6 +831,7 @@ export class Room {
     }
 
     if (dirty) await this.save();
+    this.announce(true, closing);
     this.push(closing);
   }
 
@@ -645,10 +843,37 @@ function allowed(origin) {
   return ALLOWED_ORIGINS.includes(origin);
 }
 
+function cors(origin) {
+  return {
+    "Access-Control-Allow-Origin": allowed(origin) ? origin : ALLOWED_ORIGINS[0],
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+  };
+}
+
 export default {
   async fetch(req, env) {
     const url = new URL(req.url);
     const origin = req.headers.get("origin") || "";
+
+    if (url.pathname === "/admin/rooms") {
+      if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors(origin) });
+      if (!allowed(origin)) return new Response("forbidden origin", { status: 403 });
+      if (req.method !== "POST") return new Response("expected post", { status: 405 });
+
+      /* The token rides in the body rather than the path, so it is never in a
+         URL that a log, a history entry or a Referer header would keep. */
+      let token = "";
+      try { token = (await req.json()).token; } catch { /* left empty, fails below */ }
+      const verdict = await checkToken(env, token);
+      if (verdict !== "ok") {
+        return Response.json({ error: verdict }, { status: verdict === "locked" ? 429 : 403, headers: cors(origin) });
+      }
+      const list = await directory(env).fetch("https://d/list");
+      return new Response(await list.text(), {
+        headers: Object.assign({ "Content-Type": "application/json; charset=utf-8" }, cors(origin)),
+      });
+    }
 
     if (url.pathname === "/health") {
       return new Response(JSON.stringify({ ok: true, v: PROTOCOL }), {

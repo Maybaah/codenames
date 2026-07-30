@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Room watch | Codenames</title>
+
+  <!-- Not linked from anywhere and not for a search engine. The token is the
+       gate, but there is no reason to advertise the door. -->
+  <meta name="robots" content="noindex, nofollow, noarchive" />
+  <meta name="referrer" content="no-referrer" />
+  <meta name="theme-color" content="#0a0a0a" />
+  <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/assets/site.css" />
+
+  <style>
+    :root {
+      --red: #e05a5a;
+      --blue: #5b8def;
+      --tan: #8b8069;
+    }
+
+    [hidden] { display: none !important; }
+
+    main { padding: 40px 0 80px; }
+    .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+
+    .head { display: flex; align-items: baseline; gap: 14px; margin-bottom: 26px; }
+    .head h1 { font-size: 22px; }
+    .head .eyebrow { font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); }
+
+    .card {
+      background: var(--bg-surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 16px 18px; margin-bottom: 18px;
+    }
+    .card h2 {
+      font-family: var(--font-mono); font-size: 10px; text-transform: uppercase;
+      letter-spacing: 0.14em; color: var(--text-muted); font-weight: 500; margin-bottom: 12px;
+    }
+
+    .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .row input {
+      background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 8px;
+      color: var(--text-primary); font-family: var(--font-mono); font-size: 14px; padding: 8px 12px;
+    }
+    #token { flex: 1; min-width: 220px; }
+
+    .note { font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); margin-top: 10px; }
+    .note.bad { color: var(--danger); }
+
+    /* ── the room list ── */
+    .rooms { display: grid; gap: 8px; }
+    .room-btn {
+      display: grid; grid-template-columns: 62px 1fr auto; gap: 14px; align-items: center;
+      background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 10px;
+      padding: 11px 14px; cursor: pointer; text-align: left; width: 100%;
+      font-family: var(--font-mono); font-size: 12px; color: var(--text-secondary);
+    }
+    .room-btn:hover { border-color: var(--text-muted); }
+    .room-btn[aria-pressed="true"] { border-color: var(--accent); }
+    .room-btn .code { font-size: 15px; font-weight: 600; color: var(--text-primary); letter-spacing: 0.08em; }
+    .room-btn .st { color: var(--text-muted); }
+    .room-btn .st.live { color: var(--accent); }
+    .room-btn .st.over { color: var(--tan); }
+
+    /* ── the key ── */
+    .key {
+      display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-bottom: 4px;
+    }
+    .kw {
+      aspect-ratio: 1.55; border-radius: 8px; border: 1px solid var(--border);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      font-family: var(--font-mono); font-size: 11px; text-align: center; padding: 4px;
+      overflow-wrap: anywhere; line-height: 1.25;
+    }
+    .kw .n { font-size: 9px; color: var(--text-muted); margin-bottom: 3px; }
+    .kw.red { background: rgba(224, 90, 90, 0.16); border-color: rgba(224, 90, 90, 0.5); color: var(--red); }
+    .kw.blue { background: rgba(91, 141, 239, 0.16); border-color: rgba(91, 141, 239, 0.5); color: var(--blue); }
+    .kw.neutral { background: rgba(139, 128, 105, 0.14); border-color: rgba(139, 128, 105, 0.45); color: var(--tan); }
+    .kw.assassin { background: var(--text-primary); border-color: var(--text-primary); color: var(--bg-base); }
+    /* a card already turned over is the same colour, spent */
+    .kw.up { opacity: 0.34; text-decoration: line-through; }
+    .kw .v { font-size: 9px; color: var(--text-primary); margin-top: 3px; }
+
+    /* ── roster ── */
+    table { width: 100%; border-collapse: collapse; font-family: var(--font-mono); font-size: 12px; }
+    th {
+      text-align: left; font-weight: 500; font-size: 10px; text-transform: uppercase;
+      letter-spacing: 0.1em; color: var(--text-muted); padding: 0 10px 8px 0;
+    }
+    td { padding: 5px 10px 5px 0; color: var(--text-secondary); border-top: 1px solid var(--border-subtle); }
+    td.red { color: var(--red); }
+    td.blue { color: var(--blue); }
+    td.id { color: var(--text-muted); font-size: 10px; }
+    .off { opacity: 0.4; }
+
+    /* ── chats and log ── */
+    .panes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+    .pane h3 {
+      font-family: var(--font-mono); font-size: 10px; text-transform: uppercase;
+      letter-spacing: 0.12em; color: var(--text-muted); margin-bottom: 8px; font-weight: 500;
+    }
+    .pane.red h3 { color: var(--red); }
+    .pane.blue h3 { color: var(--blue); }
+    .feed {
+      font-family: var(--font-mono); font-size: 11.5px; line-height: 1.75;
+      color: var(--text-secondary); max-height: 260px; overflow-y: auto;
+    }
+    .feed .msg { overflow-wrap: anywhere; }
+    .feed b { font-weight: 500; color: var(--text-primary); margin-right: 4px; }
+    .feed b.red { color: var(--red); }
+    .feed b.blue { color: var(--blue); }
+    .feed b.sm::before { content: "◆ "; font-size: 9px; vertical-align: 1px; }
+    .feed .none { color: var(--text-muted); }
+    .feed .l-red { color: var(--red); }
+    .feed .l-blue { color: var(--blue); }
+    .feed .l-miss { color: var(--tan); }
+    .feed .l-kill { color: var(--danger); }
+
+    .facts { display: flex; flex-wrap: wrap; gap: 8px 20px; font-family: var(--font-mono); font-size: 12px; }
+    .facts span { color: var(--text-muted); }
+    .facts b { font-weight: 500; color: var(--text-primary); }
+
+    @media (max-width: 780px) {
+      .panes { grid-template-columns: 1fr; }
+      .kw { aspect-ratio: 1.15; font-size: 10px; }
+    }
+  </style>
+</head>
+
+<body>
+<main>
+  <div class="wrap">
+    <div class="head">
+      <h1>Room watch</h1>
+      <p class="eyebrow">codenames</p>
+    </div>
+
+    <div class="card" id="gate">
+      <h2>token</h2>
+      <div class="row">
+        <input id="token" type="password" autocomplete="off" spellcheck="false" placeholder="admin token" aria-label="Admin token" />
+        <button class="btn btn-primary btn-sm" id="btn-open">Open</button>
+      </div>
+      <p class="note" id="gate-note">Held for this tab only. The room is told that somebody is watching.</p>
+    </div>
+
+    <div id="console" hidden>
+      <div class="card">
+        <h2>rooms</h2>
+        <div class="rooms" id="rooms"></div>
+        <div class="row" style="margin-top: 12px;">
+          <input id="code" maxlength="4" autocomplete="off" spellcheck="false" placeholder="CODE" aria-label="Room code" style="width: 90px;" />
+          <button class="btn btn-secondary btn-sm" id="btn-attach">Watch</button>
+          <button class="btn btn-secondary btn-sm" id="btn-refresh">Refresh</button>
+          <span style="flex: 1;"></span>
+          <button class="btn btn-secondary btn-sm" id="btn-forget">Forget token</button>
+        </div>
+        <p class="note" id="rooms-note"></p>
+      </div>
+
+      <div id="room" hidden>
+        <div class="card">
+          <h2 id="room-title">room</h2>
+          <div class="facts" id="facts"></div>
+        </div>
+
+        <div class="card">
+          <h2>the key</h2>
+          <div class="key" id="key"></div>
+        </div>
+
+        <div class="card">
+          <h2>table</h2>
+          <table>
+            <thead>
+              <tr><th>name</th><th>team</th><th>role</th><th>pick</th><th>here</th><th>id</th></tr>
+            </thead>
+            <tbody id="roster"></tbody>
+          </table>
+        </div>
+
+        <div class="card">
+          <h2>chat</h2>
+          <div class="panes">
+            <div class="pane"><h3>room</h3><div class="feed" id="chat-all"></div></div>
+            <div class="pane red"><h3>red</h3><div class="feed" id="chat-red"></div></div>
+            <div class="pane blue"><h3>blue</h3><div class="feed" id="chat-blue"></div></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>log</h2>
+          <div class="feed" id="log"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  var LOCAL = location.hostname === "localhost" || location.hostname === "127.0.0.1";
+  var API = LOCAL ? "http://localhost:8787" : "https://codenames-room.maybeez.workers.dev";
+  var CODE_RE = /^[A-HJ-NP-Z2-9]{4}$/;
+
+  /* sessionStorage, not localStorage: the token dies with the tab rather than
+     sitting in a browser profile until somebody clears it */
+  var token = sessionStorage.getItem("codenames:admin") || "";
+
+  var S = null, ws = null, code = null, wantOpen = false, retry = 0, retryTimer = null;
+  var el = {};
+  ["gate", "gate-note", "token", "console", "rooms", "rooms-note", "code", "room",
+   "room-title", "facts", "key", "roster", "chat-all", "chat-red", "chat-blue",
+   "log"].forEach(function (id) { el[id] = document.getElementById(id); });
+
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (ch) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch];
+    });
+  }
+
+  function note(node, text, bad) {
+    node.textContent = text;
+    node.className = "note" + (bad ? " bad" : "");
+  }
+
+  /* ── the gate ── */
+  function open(next) {
+    token = next;
+    listRooms(true);
+  }
+
+  function listRooms(first) {
+    if (!token) return;
+    fetch(API + "/admin/rooms", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token: token }),
+    }).then(function (r) {
+      return r.json().then(function (body) { return { ok: r.ok, body: body }; });
+    }).then(function (res) {
+      if (!res.ok) {
+        var why = res.body && res.body.error;
+        note(el["gate-note"],
+          why === "locked" ? "too many attempts, wait five minutes"
+          : why === "unconfigured" ? "ADMIN_TOKEN is not set on the worker"
+          : "that token was refused", true);
+        sessionStorage.removeItem("codenames:admin");
+        token = "";
+        return;
+      }
+      sessionStorage.setItem("codenames:admin", token);
+      el.gate.hidden = true;
+      el["console"].hidden = false;
+      renderRooms(res.body);
+      if (first && res.body.length === 1) attach(res.body[0].code);
+    }, function () {
+      note(el["gate-note"], "could not reach the worker", true);
+    });
+  }
+
+  function renderRooms(list) {
+    note(el["rooms-note"], list.length
+      ? list.length + " room" + (list.length === 1 ? "" : "s") + " seen in the last hour"
+      : "no rooms yet. a code still works if you have one.");
+    el.rooms.innerHTML = list.map(function (r) {
+      var ago = Math.max(0, Math.round((Date.now() - r.updated) / 1000));
+      var when = ago < 90 ? ago + "s ago" : Math.round(ago / 60) + "m ago";
+      return '<button class="room-btn" data-code="' + esc(r.code) + '" aria-pressed="' +
+        (r.code === code) + '">' +
+        '<span class="code">' + esc(r.code) + "</span>" +
+        '<span class="st ' + esc(r.status) + '">' + esc(r.status) +
+        " · " + r.here + "/" + r.players + " here · " + esc(r.lang) +
+        (r.round ? " · round " + r.round : "") + "</span>" +
+        "<span>" + when + "</span></button>";
+    }).join("");
+  }
+
+  /* ── the socket ── */
+  function attach(next) {
+    detach();
+    code = next;
+    wantOpen = true;
+    el.code.value = next;
+    connect();
+  }
+
+  function connect() {
+    if (!wantOpen || !code) return;
+    ws = new WebSocket(API.replace(/^http/, "ws") + "/room/" + code);
+    ws.onopen = function () {
+      retry = 0;
+      ws.send(JSON.stringify({ type: "admin", token: token }));
+    };
+    ws.onmessage = function (ev) {
+      var msg;
+      try { msg = JSON.parse(ev.data); } catch (e) { return; }
+      if (msg.type === "error") { note(el["rooms-note"], msg.reason, true); return; }
+      if (msg.type !== "state" || !msg.admin) return;
+      S = msg;
+      render();
+    };
+    /* 4003 is the gate saying no. Retrying that only burns the attempt
+       counter, so it stops instead. */
+    ws.onclose = function (ev) {
+      ws = null;
+      if (!wantOpen) return;
+      if (ev.code === 4003) { wantOpen = false; note(el["rooms-note"], "refused", true); return; }
+      retry = Math.min(retry + 1, 5);
+      retryTimer = setTimeout(connect, retry * 1000);
+    };
+  }
+
+  function detach() {
+    wantOpen = false;
+    clearTimeout(retryTimer);
+    if (ws) { try { ws.close(); } catch (e) {} ws = null; }
+  }
+
+  /* ── render ── */
+  function render() {
+    el.room.hidden = !S;
+    if (!S) return;
+    el["room-title"].textContent = "room " + (S.code || code);
+    document.querySelectorAll(".room-btn").forEach(function (b) {
+      b.setAttribute("aria-pressed", String(b.dataset.code === code));
+    });
+
+    var facts = [
+      ["status", S.status],
+      ["deck", S.lang],
+      ["round", S.round],
+      ["turn", S.status === "live" ? S.turn + " · " + S.phase : "—"],
+      ["clue", S.clue ? S.clue.word + " " + S.clue.count + " (" + S.clue.team + ")" : "—"],
+      ["left", S.left.red + " red · " + S.left.blue + " blue"],
+      ["guesses left", S.status === "live" && S.phase === "guess" ? S.guessesLeft : "—"],
+      ["penalty", S.penalty || "—"],
+      ["winner", S.winner ? S.winner + " · " + S.endReason : "—"],
+      ["watching", S.watchers],
+    ];
+    el.facts.innerHTML = facts.map(function (f) {
+      return "<span>" + esc(f[0]) + " <b>" + esc(f[1]) + "</b></span>";
+    }).join("");
+
+    renderKey();
+    renderRoster();
+    feed(el["chat-all"], S.chat.all, true);
+    feed(el["chat-red"], S.chat.red, false);
+    feed(el["chat-blue"], S.chat.blue, false);
+    renderLog();
+  }
+
+  function renderKey() {
+    if (!S.words.length || !S.key) {
+      el.key.innerHTML = '<p class="note" style="grid-column: 1 / -1;">no table dealt</p>';
+      return;
+    }
+    var tally = S.votes || [];
+    el.key.innerHTML = S.words.map(function (w, i) {
+      var n = tally[i] || 0;
+      return '<div class="kw ' + esc(S.key[i]) + (S.revealed[i] ? " up" : "") + '">' +
+        '<span class="n">' + i + "</span>" + esc(w) +
+        (n && !S.revealed[i] ? '<span class="v">' + n + " picked</span>" : "") +
+        "</div>";
+    }).join("");
+  }
+
+  function renderRoster() {
+    var picks = S.picks || {};
+    el.roster.innerHTML = S.players.map(function (p) {
+      var cell = picks[p.id];
+      var pick = Number.isInteger(cell) && S.words[cell] ? S.words[cell] + " (" + cell + ")" : "—";
+      return '<tr class="' + (p.here ? "" : "off") + '">' +
+        "<td>" + esc(p.name) + (p.id === S.host ? " · host" : "") + "</td>" +
+        '<td class="' + (p.team || "") + '">' + esc(p.team || "—") + "</td>" +
+        "<td>" + esc(p.role || "watching") + "</td>" +
+        "<td>" + esc(pick) + "</td>" +
+        "<td>" + (p.here ? "yes" : "no") + "</td>" +
+        '<td class="id">' + esc(p.id) + "</td></tr>";
+    }).join("");
+  }
+
+  function feed(node, lines, stamped) {
+    if (!lines || !lines.length) { node.innerHTML = '<p class="none">nothing</p>'; return; }
+    var atBottom = node.scrollHeight - node.scrollTop - node.clientHeight < 40;
+    node.innerHTML = lines.map(function (m) {
+      var cls = stamped ? ((m.team || "") + (m.sm ? " sm" : "")).trim() : "";
+      return '<div class="msg"><b' + (cls ? ' class="' + cls + '"' : "") + ">" +
+        esc(m.name) + "</b> " + esc(m.text) + "</div>";
+    }).join("");
+    if (atBottom) node.scrollTop = node.scrollHeight;
+  }
+
+  function renderLog() {
+    if (!S.log || !S.log.length) { el.log.innerHTML = '<p class="none">nothing</p>'; return; }
+    el.log.innerHTML = S.log.slice().reverse().map(function (e) {
+      var cls = e.team ? "l-" + e.team : "";
+      var line;
+      switch (e.t) {
+        case "start": line = "new table dealt, " + e.team + " starts, " + e.lang + " deck"; break;
+        case "clue": line = e.name + " (" + e.team + ") · " + e.word + " " + e.count; break;
+        case "reveal":
+          line = e.name + " named " + e.word + " · " + e.color;
+          cls = e.color === "assassin" ? "l-kill" : e.color === "neutral" ? "l-miss" : "l-" + e.color;
+          break;
+        case "pass": line = e.name + " passed the turn"; break;
+        case "illegal": line = e.by + " called an illegal clue, " + e.team + " loses the turn"; break;
+        case "free": line = e.name + " turned over " + e.word + " in compensation"; break;
+        case "end": line = e.team + " wins · " + e.reason; break;
+        default: return "";
+      }
+      return '<div class="' + cls + '">' + esc(line) + "</div>";
+    }).join("");
+  }
+
+  /* ── input ── */
+  document.getElementById("btn-open").addEventListener("click", function () {
+    var v = el.token.value.trim();
+    if (!v) return;
+    el.token.value = "";
+    open(v);
+  });
+
+  el.token.addEventListener("keydown", function (e) {
+    if (e.key === "Enter") document.getElementById("btn-open").click();
+  });
+
+  document.getElementById("btn-refresh").addEventListener("click", function () { listRooms(); });
+
+  document.getElementById("btn-attach").addEventListener("click", function () {
+    var v = el.code.value.trim().toUpperCase();
+    if (!CODE_RE.test(v)) { note(el["rooms-note"], "a code is four characters", true); return; }
+    attach(v);
+  });
+
+  el.code.addEventListener("keydown", function (e) {
+    if (e.key === "Enter") document.getElementById("btn-attach").click();
+  });
+
+  el.rooms.addEventListener("click", function (e) {
+    var btn = e.target.closest(".room-btn");
+    if (btn) attach(btn.dataset.code);
+  });
+
+  document.getElementById("btn-forget").addEventListener("click", function () {
+    detach();
+    sessionStorage.removeItem("codenames:admin");
+    token = "";
+    S = null;
+    code = null;
+    el["console"].hidden = true;
+    el.room.hidden = true;
+    el.gate.hidden = false;
+    note(el["gate-note"], "forgotten. paste it again to come back.");
+  });
+
+  window.addEventListener("beforeunload", detach);
+
+  if (token) listRooms(true);
+})();
+</script>
+</body>
+</html>

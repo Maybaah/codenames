@@ -53,6 +53,35 @@ the back of a card.
 Nothing here is ranked, so nothing is stored. There is no database and no
 leaderboard. An idle room is wiped by an alarm an hour later.
 
+## Watching a room
+
+`/codenames/admin/` is unlinked and `noindex`, and asks for a token before it
+shows anything. With one it lists the live rooms and will attach to any of
+them: the whole key, both team channels, the room channel, who voted for what
+and the full log.
+
+The token is a Worker secret, not a row in a database. `codenames-room` has no
+database binding by design, and giving it one so it could read a password would
+hand the room referee a connection to the arcade's scores for no other reason.
+Secrets are encrypted at rest, set out of band and never in this repository:
+
+```bash
+cd worker && npx wrangler secret put ADMIN_TOKEN     # deployed
+echo 'ADMIN_TOKEN=...' > worker/.dev.vars            # wrangler dev, gitignored
+```
+
+Without it the page is refused rather than open.
+
+Watching is a socket, not a role. It carries no player id, so it never appears
+in the roster, never takes a seat and never votes, and a room with one attached
+says so on the page. An owner can watch a game or play in it, not both down the
+same connection.
+
+Five wrong tokens shut the gate for five minutes. The count lives in the
+directory object rather than in a room, so it is five in total and not five per
+four-character code, and the comparison reads both strings to the end so a
+refusal does not say how much of the guess was right.
+
 ## The one rule a machine can enforce
 
 The referee refuses a clue that is literally a word still face up on the table,

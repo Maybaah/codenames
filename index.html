@@ -240,6 +240,16 @@
     .log .miss { color: var(--tan); }
     .log .kill { color: var(--danger); }
 
+    /* watching is never silent: a room with an admin attached says so */
+    .watch-note {
+      font-family: var(--font-mono); font-size: 11px; color: var(--tan);
+      margin-top: 6px; display: flex; align-items: center; gap: 7px;
+    }
+    .watch-note::before {
+      content: ""; width: 6px; height: 6px; border-radius: 50%;
+      background: var(--tan); flex: none;
+    }
+
     /* ── chat ── a room channel everybody has and a team channel only that
        team's operatives have, tinted when the team one is showing ── */
     .chat {
@@ -419,6 +429,7 @@
     </div>
 
     <p class="statusline" id="status"></p>
+    <p class="watch-note" id="watch-note" hidden></p>
 
     <div class="chat" id="chat-panel" hidden>
       <div class="sub-pills chat-tabs" id="chat-tabs" role="group" aria-label="Chat channel">

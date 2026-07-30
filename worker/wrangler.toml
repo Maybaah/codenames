@@ -9,14 +9,34 @@ compatibility_date = "2026-07-01"
 name = "ROOM"
 class_name = "Room"
 
+# One object for the whole Worker. Durable Objects cannot be listed, so rooms
+# post a code and a player count here for the admin page to read, and the admin
+# token is compared here so that five wrong guesses are five in total rather
+# than five per room.
+[[durable_objects.bindings]]
+name = "DIRECTORY"
+class_name = "Directory"
+
 # new_sqlite_classes, not new_classes: the SQLite-backed storage backend is what
 # makes Durable Objects available without a paid plan.
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["Room"]
 
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["Directory"]
+
 # No database. Nothing here is ranked, so there is nothing to keep once the
 # room goes quiet and the alarm wipes it.
+#
+# ADMIN_TOKEN is a secret, so it is not declared here and is not in this
+# repository. Set it once per environment:
+#
+#   npx wrangler secret put ADMIN_TOKEN      # deployed
+#   echo 'ADMIN_TOKEN=...' > .dev.vars       # wrangler dev, gitignored
+#
+# Without it the admin page is refused rather than open.
 
 [observability]
 enabled = true
