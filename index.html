@@ -12,7 +12,7 @@
   <link rel="alternate" hreflang="en" href="https://maybaah.github.io/codenames/" />
   <link rel="alternate" hreflang="ru" href="https://maybaah.github.io/codenames/?lang=ru" />
   <link rel="alternate" hreflang="x-default" href="https://maybaah.github.io/codenames/" />
-  <meta name="theme-color" content="#0a0a0a" />
+  <meta name="theme-color" content="#09090b" />
 
   <!-- Open Graph -->
   <meta property="og:site_name" content="maybaah.github.io" />
@@ -35,7 +35,7 @@
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400..700&family=Geist+Mono:wght@400..700&display=swap" rel="stylesheet" />
 
   <link rel="stylesheet" href="/assets/site.css" />
 
@@ -98,7 +98,7 @@
     .team.red h3 { color: var(--red); }
     .team.blue h3 { color: var(--blue); }
     .team .slot {
-      font-family: var(--font-mono); font-size: 11px; color: var(--text-muted);
+      font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary);
       margin-top: 10px; text-transform: uppercase; letter-spacing: 0.12em;
     }
     .team ul { list-style: none; margin: 4px 0 0; padding: 0; }
@@ -136,7 +136,7 @@
       position: relative;
       aspect-ratio: 1.35; display: flex; align-items: center; justify-content: center;
       text-align: center; padding: 4px 3px;
-      background: var(--bg-surface); border: 1px solid var(--border); border-radius: 8px;
+      background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-md);
       font-family: var(--font-mono); font-size: clamp(9px, 1.85vw, 12px); font-weight: 500;
       letter-spacing: 0.04em; line-height: 1.15; color: var(--text-primary);
       overflow-wrap: anywhere; cursor: default;
@@ -147,12 +147,12 @@
     .word.peek-red { border-color: rgba(224, 90, 90, 0.55); background: rgba(224, 90, 90, 0.07); }
     .word.peek-blue { border-color: rgba(91, 141, 239, 0.55); background: rgba(91, 141, 239, 0.07); }
     .word.peek-neutral { border-color: rgba(139, 128, 105, 0.5); background: rgba(139, 128, 105, 0.07); }
-    .word.peek-assassin { border-color: #555; background: #000; }
-    .word.up { color: #0a0a0a; font-weight: 600; }
+    .word.peek-assassin { border-color: #52525b; background: #000; }
+    .word.up { color: #09090b; font-weight: 600; }
     .word.up.red { background: var(--red); border-color: var(--red); }
     .word.up.blue { background: var(--blue); border-color: var(--blue); }
     .word.up.neutral { background: var(--tan); border-color: var(--tan); }
-    .word.up.assassin { background: #000; border-color: #444; color: var(--text-secondary); text-decoration: line-through; }
+    .word.up.assassin { background: #000; border-color: #3f3f46; color: var(--text-secondary); text-decoration: line-through; }
     .word.up { opacity: 0.85; }
     .word.fresh { animation: flip 160ms ease; }
     @keyframes flip { from { transform: scale(0.9); opacity: 0.4; } to { transform: scale(1); opacity: 0.85; } }
@@ -178,7 +178,7 @@
     }
     .clue-bar .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
     .clue-bar input, .clue-bar select {
-      background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 8px;
+      background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius-md);
       color: var(--text-primary); font-family: var(--font-mono); font-size: 15px; padding: 7px 12px;
     }
     #clue-word { width: 190px; }
@@ -188,14 +188,14 @@
       letter-spacing: 0.06em; text-transform: uppercase;
     }
     .clue-now .count { color: var(--warning); }
-    .clue-meta { font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); margin-top: 6px; }
+    .clue-meta { font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary); margin-top: 6px; }
     .warn { font-family: var(--font-mono); font-size: 11px; color: var(--warning); margin-top: 8px; line-height: 1.6; }
     .penalty { font-family: var(--font-mono); font-size: 11px; color: var(--red); margin-top: 8px; line-height: 1.6; }
 
     /* ── log ── */
     .log {
       margin-top: 24px; border-top: 1px solid var(--border-subtle); padding-top: 14px;
-      font-family: var(--font-mono); font-size: 11px; color: var(--text-muted);
+      font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary);
       max-height: 190px; overflow-y: auto; line-height: 1.9;
     }
     .log b { font-weight: 500; }
@@ -242,15 +242,15 @@
     /* the room channel is the one place a spymaster can talk, so it says which
        of the people talking are holding the key */
     .chat-log .msg b.sm::before { content: "◆ "; font-size: 9px; vertical-align: 1px; }
-    .chat-empty { color: var(--text-muted); font-size: 11px; }
+    .chat-empty { color: var(--text-secondary); font-size: 11px; }
     .chat-row { display: flex; gap: 8px; }
     .chat-row input {
       flex: 1; min-width: 0; background: var(--bg-elevated); border: 1px solid var(--border);
-      border-radius: 8px; color: var(--text-primary); font-family: var(--font-sans);
+      border-radius: var(--radius-md); color: var(--text-primary); font-family: var(--font-sans);
       font-size: 14px; padding: 7px 12px;
     }
 
-    .rules { margin-top: 40px; font-size: 13px; color: var(--text-muted); line-height: 1.75; }
+    .rules { margin-top: 40px; font-size: 13px; color: var(--text-secondary); line-height: 1.75; }
     .rules h2 { font-size: 15px; font-weight: 500; color: var(--text-primary); margin-bottom: 10px; }
     .rules h3 { font-size: 13px; color: var(--text-secondary); margin: 18px 0 6px; }
     .rules p { margin-bottom: 10px; }
@@ -297,7 +297,7 @@
     <div class="lobby" id="panel-room">
       <div class="lobby-row">
         <button class="btn btn-primary btn-sm" id="btn-create" data-i18n="room.create">Create lobby</button>
-        <span style="font-family: var(--font-mono); font-size: 11px; color: var(--text-muted);" data-i18n="room.or">or</span>
+        <span style="font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary);" data-i18n="room.or">or</span>
         <input id="join-code" maxlength="4" placeholder="CODE" autocomplete="off" spellcheck="false" aria-label="Room code" />
         <button class="btn btn-secondary btn-sm" id="btn-join" data-i18n="room.join">Join</button>
         <span style="flex: 1;"></span>

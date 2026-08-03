@@ -9,12 +9,12 @@
        gate, but there is no reason to advertise the door. -->
   <meta name="robots" content="noindex, nofollow, noarchive" />
   <meta name="referrer" content="no-referrer" />
-  <meta name="theme-color" content="#0a0a0a" />
+  <meta name="theme-color" content="#09090b" />
   <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg" />
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400..700&family=Geist+Mono:wght@400..700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/assets/site.css" />
 
   <style>
@@ -44,7 +44,7 @@
 
     .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
     .row input {
-      background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 8px;
+      background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius-md);
       color: var(--text-primary); font-family: var(--font-mono); font-size: 14px; padding: 8px 12px;
     }
     #token { flex: 1; min-width: 220px; }
@@ -56,7 +56,7 @@
     .rooms { display: grid; gap: 8px; }
     .room-btn {
       display: grid; grid-template-columns: 62px 1fr auto; gap: 14px; align-items: center;
-      background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 10px;
+      background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius);
       padding: 11px 14px; cursor: pointer; text-align: left; width: 100%;
       font-family: var(--font-mono); font-size: 12px; color: var(--text-secondary);
     }
@@ -72,7 +72,7 @@
       display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-bottom: 4px;
     }
     .kw {
-      aspect-ratio: 1.55; border-radius: 8px; border: 1px solid var(--border);
+      aspect-ratio: 1.55; border-radius: var(--radius-md); border: 1px solid var(--border);
       display: flex; flex-direction: column; align-items: center; justify-content: center;
       font-family: var(--font-mono); font-size: 11px; text-align: center; padding: 4px;
       overflow-wrap: anywhere; line-height: 1.25;
